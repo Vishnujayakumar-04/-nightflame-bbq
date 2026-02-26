@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      // Users can read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users doc is created automatically on first login
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Only admin can update user docs
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Menu Collection ---
+    match /menu/{itemId} {
+      // Anyone authenticated can read the menu
+      allow read: if request.auth != null;
+      // Only admin can write (add, update, delete)
+      allow write: if isAdmin();
+    }
+
+    // --- Orders Collection ---
+    match /orders/{orderId} {
+      // Customers can read their own orders
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Authenticated users can create orders (for themselves)
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Only admin can update order status
+      allow update: if isAdmin();
+      // No one can delete orders
+      allow delete: if false;
+    }
+
+    // --- Helper function: Check if user is admin ---
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
