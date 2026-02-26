@@ -2,12 +2,12 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
 
 import { AppStrings } from '../../constants/Strings';
 import { AppColors } from '../../constants/Colors';
-import { Order, OrderStatus } from '../../types/models';
+import { Order } from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useOrderStore } from '../../store/orderStore';
 
 // Utility formatters
 const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
@@ -21,40 +21,7 @@ const formatOrderIdShort = (id: string) => `#${id.substring(0, 8).toUpperCase()}
 
 export default function MyOrdersScreen() {
     const router = useRouter();
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        // Simulate fetching orders
-        setTimeout(() => {
-            setOrders([
-                {
-                    orderId: 'ord_12345abcde',
-                    userId: 'user_1',
-                    items: [
-                        { menuItem: { itemId: '1', name: 'Flame Grilled Chicken', price: 499 } as any, quantity: 1 },
-                        { menuItem: { itemId: '2', name: 'Spicy Wings', price: 299 } as any, quantity: 2 }
-                    ],
-                    totalAmount: 1097,
-                    status: OrderStatus.preparing,
-                    pickupTime: Date.now() + 3600000,
-                    timestamp: Date.now() - 1000000
-                },
-                {
-                    orderId: 'ord_9876xyz',
-                    userId: 'user_1',
-                    items: [
-                        { menuItem: { itemId: '3', name: 'Garlic Bread', price: 149 } as any, quantity: 1 },
-                    ],
-                    totalAmount: 149,
-                    status: OrderStatus.completed,
-                    pickupTime: Date.now() - 86400000,
-                    timestamp: Date.now() - 90000000
-                }
-            ]);
-            setLoading(false);
-        }, 1000);
-    }, []);
+    const { orders, isLoading } = useOrderStore();
 
     const renderHeader = () => (
         <View className="flex-row items-center justify-between px-6 h-14">
@@ -85,7 +52,7 @@ export default function MyOrdersScreen() {
 
         return (
             <TouchableOpacity
-                // onPress={() => router.push(`/order-tracking/${item.orderId}`)}
+                onPress={() => router.push(`/(customer)/order-tracking/${item.orderId}`)}
                 className="bg-surfaceCard p-4 rounded-2xl mb-4 border border-divider"
             >
                 <View className="flex-row justify-between items-center mb-3">
@@ -110,9 +77,16 @@ export default function MyOrdersScreen() {
                         </Text>
                     </View>
 
-                    <Text className="text-primary font-[Outfit_600SemiBold] text-base">
-                        {formatCurrency(item.totalAmount)}
-                    </Text>
+                    <View className="items-end">
+                        <Text className="text-primary font-[Outfit_600SemiBold] text-base">
+                            {formatCurrency(item.totalAmount)}
+                        </Text>
+                        {item.paymentStatus && (
+                            <Text className={`font-[Inter_600SemiBold] text-[10px] mt-0.5 ${item.paymentStatus === 'Paid' ? 'text-success' : 'text-error'}`}>
+                                {item.paymentStatus}
+                            </Text>
+                        )}
+                    </View>
                 </View>
             </TouchableOpacity>
         );
@@ -122,7 +96,7 @@ export default function MyOrdersScreen() {
         <SafeAreaView className="flex-1 bg-background" edges={['top']}>
             {renderHeader()}
 
-            {loading ? (
+            {isLoading ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color={AppColors.flameOrange} />
                 </View>

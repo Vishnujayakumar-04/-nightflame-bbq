@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MenuItem } from '../types/models';
+import { AppColors } from '../constants/Colors';
 
 interface FoodCardProps {
     item: MenuItem;
@@ -15,7 +16,7 @@ const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
 
 export const FoodCard = ({ item, quantity, onAdd, onIncrement, onDecrement }: FoodCardProps) => {
     return (
-        <View className="bg-surfaceCard rounded-2xl border border-divider overflow-hidden flex-1 h-[240px]">
+        <View className="bg-surfaceCard rounded-2xl border border-divider shadow-md shadow-black/40 overflow-hidden flex-1" style={{ elevation: 5, minHeight: 260 }}>
             {/* Image Section */}
             <View className="h-[130px] w-full relative">
                 <Image
@@ -35,16 +36,26 @@ export const FoodCard = ({ item, quantity, onAdd, onIncrement, onDecrement }: Fo
             {/* Info Section */}
             <View className="p-3 flex-1 flex-col justify-between">
                 <View>
-                    <Text className="text-white font-[Outfit_600SemiBold] text-sm" numberOfLines={1}>
+                    <Text className="text-white font-[Outfit_600SemiBold] text-base mb-1" numberOfLines={1}>
                         {item.name}
                     </Text>
-                    <Text className="text-textMuted font-[Inter_400Regular] text-xs mt-0.5" numberOfLines={2}>
+
+                    {item.preparationTime && (
+                        <View className="flex-row items-center mb-1.5">
+                            <Ionicons name="time-outline" size={12} color={AppColors.textMuted} />
+                            <Text className="text-textMuted font-[Inter_500Medium] text-xs ml-1">
+                                {item.preparationTime} mins prep
+                            </Text>
+                        </View>
+                    )}
+
+                    <Text className="text-textMuted font-[Inter_400Regular] text-xs" numberOfLines={2}>
                         {item.description}
                     </Text>
                 </View>
 
-                <View className="flex-row items-center justify-between mt-2">
-                    <Text className="text-primary font-[Outfit_700Bold] text-base">
+                <View className="flex-row items-center justify-between mt-3">
+                    <Text className="text-primary font-[Outfit_800ExtraBold] text-lg tracking-tight">
                         {formatCurrency(item.price)}
                     </Text>
 

@@ -1,12 +1,12 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
 
 import { AppColors } from '../../../constants/Colors';
 import { Order, OrderStatus, CartItem } from '../../../types/models';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
+import { useOrderStore } from '../../../store/orderStore';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
 const formatTime = (timestamp: number) => {
@@ -100,27 +100,12 @@ export default function OrderTrackingScreen() {
     const router = useRouter();
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
 
-    const [order, setOrder] = useState<Order | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { orders } = useOrderStore();
+    const order = orders.find(o => o.orderId === orderId);
 
-    useEffect(() => {
-        // Simulate fetching order from Firestore
-        setTimeout(() => {
-            setOrder({
-                orderId: orderId || 'ord_12345abcde',
-                userId: 'user_1',
-                items: [
-                    { menuItem: { itemId: '1', name: 'Flame Grilled Chicken', price: 499 } as any, quantity: 1 },
-                    { menuItem: { itemId: '2', name: 'Spicy Wings', price: 299 } as any, quantity: 2 }
-                ],
-                totalAmount: 1097,
-                status: OrderStatus.preparing,
-                pickupTime: Date.now() + 3600000,
-                timestamp: Date.now() - 1000000
-            });
-            setLoading(false);
-        }, 1000);
-    }, [orderId]);
+    // Generate UPI URI
+    const upiString = order ? encodeURIComponent(`upi://pay?pa=shop@upi&pn=NightFlame%20BBQ&am=${order.totalAmount}&cu=INR&tn=Order%20${order.orderId}`) : '';
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${upiString}`;
 
     const renderHeader = () => (
         <View className="flex-row items-center justify-between px-6 h-14">
@@ -138,7 +123,7 @@ export default function OrderTrackingScreen() {
         <SafeAreaView className="flex-1 bg-background" edges={['top']}>
             {renderHeader()}
 
-            {loading || !order ? (
+            {!order ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color={AppColors.flameOrange} />
                 </View>
@@ -183,7 +168,40 @@ export default function OrderTrackingScreen() {
                                 {formatCurrency(order.totalAmount)}
                             </Text>
                         </View>
+
+                        {order.paymentStatus && (
+                            <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-divider/50">
+                                <Text className="text-textSecondary font-[Outfit_600SemiBold] text-sm">
+                                    Payment Status
+                                </Text>
+                                <Text className={`font-[Outfit_700Bold] text-sm ${order.paymentStatus === 'Paid' ? 'text-success' : 'text-error'}`}>
+                                    {order.paymentStatus} {order.paymentStatus === 'Paid' ? `(${order.paymentMethod})` : ''}
+                                </Text>
+                            </View>
+                        )}
                     </View>
+
+                    {/* Pay Now QR Code */}
+                    {order.paymentStatus !== 'Paid' && (
+                        <View className="bg-surfaceCard rounded-2xl border border-divider p-5 mb-5 items-center">
+                            <Text className="text-white font-[Outfit_700Bold] text-lg mb-2">
+                                Complete Payment
+                            </Text>
+                            <Text className="text-textSecondary font-[Inter_400Regular] text-xs mb-5 text-center px-4">
+                                Scan the QR code below using any UPI app (GPay, PhonePe, Paytm) to pay for your order.
+                            </Text>
+                            <View className="bg-white p-3 rounded-xl mb-3">
+                                <Image
+                                    source={{ uri: qrUrl }}
+                                    style={{ width: 160, height: 160 }}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <Text className="text-primary font-[Outfit_800ExtraBold] text-xl">
+                                {formatCurrency(order.totalAmount)}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Pickup Time Card */}
                     <View className="bg-surfaceCard rounded-2xl border border-divider p-4 mb-10 flex-row items-center">

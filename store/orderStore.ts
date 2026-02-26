@@ -12,6 +12,7 @@ interface OrderState {
     subscribeToOrders: () => () => void;
     placeOrder: (orderData: Omit<Order, 'orderId' | 'status' | 'timestamp'>) => Promise<string>;
     updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+    updateOrderPayment: (orderId: string, updates: Partial<Order>) => Promise<void>;
 }
 
 export const useOrderStore = create<OrderState>((set) => ({
@@ -77,6 +78,15 @@ export const useOrderStore = create<OrderState>((set) => ({
             await firestore().collection('orders').doc(orderId).update({ status });
         } catch (e: any) {
             console.error("Failed to update order status", e);
+        }
+    },
+
+    updateOrderPayment: async (orderId, updates) => {
+        try {
+            await firestore().collection('orders').doc(orderId).update(updates);
+        } catch (e: any) {
+            console.error("Failed to update order payment", e);
+            throw e;
         }
     }
 }));

@@ -63,9 +63,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             let userData: User;
 
             if (doc.exists()) {
-                userData = doc.data() as User;
+                const existingData = doc.data() as User;
+                userData = existingData;
                 // Update name if different and provided
-                if (customerName && customerName !== userData.name) {
+                if (customerName && customerName !== existingData.name) {
                     await userRef.update({ name: customerName });
                     userData.name = customerName;
                 }

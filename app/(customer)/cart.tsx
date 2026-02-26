@@ -7,6 +7,8 @@ import { useState, useMemo } from 'react';
 import { AppStrings } from '../../constants/Strings';
 import { AppColors } from '../../constants/Colors';
 import { useCartStore } from '../../store/cartStore';
+import { useAuthStore } from '../../store/authStore';
+import { useOrderStore } from '../../store/orderStore';
 import { Button } from '../../components/ui/Button';
 
 // Utility formatters
@@ -24,6 +26,9 @@ export default function CartScreen() {
     const [isTimePickerVisible, setTimePickerVisible] = useState(false);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+    const { user } = useAuthStore();
+    const placeOrder = useOrderStore(state => state.placeOrder);
+
     const cartTotal = getCartTotal();
 
     // Generate time slots (every 15 mins for next 3 hours)
@@ -31,33 +36,58 @@ export default function CartScreen() {
         const slots: Date[] = [];
         const now = new Date();
 
-        // Start from next 30 min mark, or next 15 if already past 30
-        const startSlot = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
-        startSlot.setMinutes(startSlot.getMinutes() + 30);
-        if (startSlot < now) {
+        let maxPrepTime = 15; // default 15 mins
+        items.forEach(cartItem => {
+            if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
+                maxPrepTime = cartItem.menuItem.preparationTime;
+            }
+        });
+
+        const minPickupTime = new Date(now.getTime() + maxPrepTime * 60000);
+
+        const startSlot = new Date(minPickupTime.getFullYear(), minPickupTime.getMonth(), minPickupTime.getDate(), minPickupTime.getHours(), 0, 0);
+        while (startSlot < minPickupTime) {
             startSlot.setMinutes(startSlot.getMinutes() + 15);
         }
 
         for (let i = 0; i < 12; i++) {
             const time = new Date(startSlot.getTime() + i * 15 * 60000);
-            if (time > now) {
-                slots.push(time);
-            }
+            slots.push(time);
         }
         return slots;
-    }, []);
+    }, [items]);
 
-    const handlePlaceOrder = () => {
-        if (!selectedTime) return;
+    const handlePlaceOrder = async () => {
+        if (!selectedTime || !user) return;
         setIsPlacingOrder(true);
-        // TODO: Firebase save order
-        setTimeout(() => {
-            setIsPlacingOrder(false);
-            // TODO: Clear cart
+
+        let maxPrepTime = 15;
+        items.forEach(cartItem => {
+            if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
+                maxPrepTime = cartItem.menuItem.preparationTime;
+            }
+        });
+
+        const estimatedPickupTime = Date.now() + (maxPrepTime * 60000);
+
+        try {
+            const newOrderId = await placeOrder({
+                userId: user.userId,
+                items,
+                totalAmount: cartTotal,
+                pickupTime: selectedTime.getTime(),
+                estimatedPickupTime: estimatedPickupTime,
+                paymentStatus: 'Unpaid',
+                paymentMethod: 'Cash' // Defaults until UPI override in Order Tracking
+            });
+
             useCartStore.getState().clearCart();
-            // router.replace(`/order-confirmation/${newOrderId}`);
-            router.replace('/(customer)/orders');
-        }, 1500);
+            router.replace(`/(customer)/order-confirmation/${newOrderId}`);
+        } catch (error) {
+            console.error("Order failed", error);
+        } finally {
+            setIsPlacingOrder(false);
+        }
     };
 
     const renderHeader = () => (
@@ -102,6 +132,11 @@ export default function CartScreen() {
                             <Text className="text-white font-[Outfit_600SemiBold] text-base mb-1">
                                 {item.name}
                             </Text>
+                            {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
+                                <Text className="text-textMuted font-[Inter_400Regular] text-xs mb-1.5" numberOfLines={2}>
+                                    {item.comboItems.join(' • ')}
+                                </Text>
+                            )}
                             <Text className="text-primary font-[Inter_500Medium] text-sm">
                                 {formatCurrency(item.price)}
                             </Text>
@@ -209,8 +244,8 @@ export default function CartScreen() {
                                         setTimePickerVisible(false);
                                     }}
                                     className={`px-4 py-3 rounded-xl border ${isSelected
-                                            ? 'bg-primary border-primary'
-                                            : 'bg-surfaceLight border-divider'
+                                        ? 'bg-primary border-primary'
+                                        : 'bg-surfaceLight border-divider'
                                         }`}
                                 >
                                     <Text className={`font-[Outfit_500Medium] text-sm ${isSelected ? 'text-white font-[Outfit_700Bold]' : 'text-textSecondary'

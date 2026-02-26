@@ -2,32 +2,22 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { AppStrings } from '../../constants/Strings';
 import { AppColors } from '../../constants/Colors';
 import { useCartStore } from '../../store/cartStore';
+import { useMenuStore } from '../../store/menuStore';
 import { FoodCard } from '../../components/FoodCard';
-import { MenuItem } from '../../types/models';
 
 export default function HomeScreen() {
     const router = useRouter();
     const { items, addItem, incrementQuantity, decrementQuantity, getItemCount } = useCartStore();
-
-    // Dummy data for now - will be replaced by Firestore
-    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { menuItems, isLoading: loading, subscribeToMenu } = useMenuStore();
 
     useEffect(() => {
-        // Simulate fetching
-        setTimeout(() => {
-            setMenuItems([
-                { itemId: '1', name: 'Flame Grilled Chicken', description: 'Our signature whole chicken marinated in proprietary spices.', price: 499, imageUrl: 'https://via.placeholder.com/300', available: true, category: 'Mains', createdAt: Date.now() },
-                { itemId: '2', name: 'Spicy Wings', description: 'Extra hot BBQ wings tossed in our special sauce.', price: 299, imageUrl: 'https://via.placeholder.com/300', available: true, category: 'Starters', createdAt: Date.now() },
-                { itemId: '3', name: 'Garlic Bread', description: 'Freshly baked garlic bread.', price: 149, imageUrl: 'https://via.placeholder.com/300', available: false, category: 'Sides', createdAt: Date.now() },
-            ]);
-            setLoading(false);
-        }, 1000);
+        const unsubscribe = subscribeToMenu();
+        return unsubscribe;
     }, []);
 
     const cartCount = getItemCount();

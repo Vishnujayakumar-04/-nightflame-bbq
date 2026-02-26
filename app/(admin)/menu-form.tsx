@@ -8,6 +8,7 @@ import { AppStrings } from '../../constants/Strings';
 import { AppColors } from '../../constants/Colors';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useMenuStore } from '../../store/menuStore';
 
 export default function MenuFormScreen() {
     const router = useRouter();
@@ -17,31 +18,54 @@ export default function MenuFormScreen() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
+    const [preparationTime, setPreparationTime] = useState('15');
     const [imageUrl, setImageUrl] = useState('');
     const [available, setAvailable] = useState(true);
 
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        if (isEditing) {
-            // Simulate fetching item data
-            setName('Flame Grilled Chicken');
-            setDescription('Our signature whole chicken marinated overnight in secret spices and flame-grilled to perfection.');
-            setPrice('499');
-            setImageUrl('https://example.com/chicken.jpg');
-            setAvailable(true);
-        }
-    }, [isEditing]);
+    const { menuItems, addMenuItem, updateMenuItem } = useMenuStore();
 
-    const handleSave = () => {
+    useEffect(() => {
+        if (isEditing && itemId) {
+            const item = menuItems.find(i => i.itemId === itemId);
+            if (item) {
+                setName(item.name);
+                setDescription(item.description);
+                setPrice(item.price.toString());
+                setPreparationTime(item.preparationTime?.toString() || '15');
+                setImageUrl(item.imageUrl);
+                setAvailable(item.available);
+            }
+        }
+    }, [isEditing, itemId, menuItems]);
+
+    const handleSave = async () => {
         if (!name.trim() || !price.trim()) return;
 
         setSaving(true);
-        // Simulate save
-        setTimeout(() => {
-            setSaving(false);
+        try {
+            const itemData = {
+                name,
+                description,
+                price: parseFloat(price),
+                preparationTime: parseInt(preparationTime, 10) || 15,
+                imageUrl,
+                available,
+                category: 'Main' // default category for now
+            };
+
+            if (isEditing && itemId) {
+                await updateMenuItem(itemId, itemData);
+            } else {
+                await addMenuItem(itemData);
+            }
             router.back();
-        }, 1000);
+        } catch (error) {
+            console.error("Failed to save menu item:", error);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const renderHeader = () => (
@@ -114,6 +138,17 @@ export default function MenuFormScreen() {
                             onChangeText={setPrice}
                             keyboardType="numeric"
                             icon={<Ionicons name="pricetag-outline" size={20} color={AppColors.textMuted} />}
+                        />
+                    </View>
+
+                    <View className="mb-5">
+                        <Input
+                            label="Preparation Time (mins)"
+                            placeholder="15"
+                            value={preparationTime}
+                            onChangeText={setPreparationTime}
+                            keyboardType="numeric"
+                            icon={<Ionicons name="time-outline" size={20} color={AppColors.textMuted} />}
                         />
                     </View>
 

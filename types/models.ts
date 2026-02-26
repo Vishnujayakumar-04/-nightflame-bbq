@@ -7,6 +7,9 @@ export interface MenuItem {
     available: boolean;
     category: string;
     createdAt: number;
+    preparationTime?: number;
+    isCombo?: boolean;
+    comboItems?: string[]; // Array of itemIds or descriptors if it's a combo
 }
 
 export interface CartItem {
@@ -23,12 +26,18 @@ export enum OrderStatus {
 
 export interface Order {
     orderId: string;
-    userId: string;
+    userId: string | null; // null for walk-ins
+    customerName?: string; // name for walk-ins
     items: CartItem[];
     totalAmount: number;
     status: OrderStatus;
+    paymentStatus: 'Unpaid' | 'Paid';
+    paymentMethod: 'Cash' | 'UPI' | 'None';
+    transactionId?: string; // Required if UPI & Paid
     pickupTime: number; // timestamp
+    estimatedPickupTime?: number;
     timestamp: number; // creation timestamp
+    paidAt?: number;
 }
 
 export interface User {
