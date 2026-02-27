@@ -1,64 +1,110 @@
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { AppStrings } from '../../constants/Strings';
-import { AppColors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { TextInput, Pressable } from 'react-native';
+import { useAuthStore } from '../../store/authStore';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
+
 
 export default function EnterNameScreen() {
     const router = useRouter();
     const [name, setName] = useState('');
+    const { setName: storeSetName } = useAuthStore();
 
     const isValid = name.trim().length >= 2;
 
     const handleNext = () => {
         if (isValid) {
-            // TODO: Save name to Zustand
+            storeSetName(name.trim());
             router.push('/(auth)/login');
         }
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background px-6" edges={['top', 'bottom']}>
-            {/* Back Button */}
-            <View className="h-14 justify-center">
-                <Ionicons
-                    name="chevron-back"
-                    size={24}
-                    color="white"
-                    onPress={() => router.back()}
-                />
-            </View>
+        <View style={styles.container}>
+            <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+                {/* Back */}
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={18} color="#A5A2A2" />
+                    <Text style={styles.backText}>Back</Text>
+                </Pressable>
 
-            <View className="flex-1 mt-6">
-                <Text className="text-white text-3xl font-[Poppins_700Bold] mb-2">
-                    {AppStrings.whatName}
-                </Text>
-                <Text className="text-textSecondary text-sm font-[Inter_400Regular] mb-10">
-                    {AppStrings.nameSubtitle}
-                </Text>
+                <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.content}>
+                    <Text style={styles.title}>What's your name?</Text>
+                    <Text style={styles.subtitle}>We'll use this to personalise your experience</Text>
 
-                <Input
-                    placeholder={AppStrings.nameHint}
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    icon={<Ionicons name="person-outline" size={20} color={AppColors.textSecondary} />}
-                />
-
-                <View className="flex-1 justify-end mb-8">
-                    <View style={{ opacity: isValid ? 1 : 0.5 }}>
-                        <Button
-                            title={AppStrings.next}
-                            disabled={!isValid}
-                            onPress={handleNext}
+                    {/* Name Input */}
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="person-outline" size={20} color="#757575" />
+                        <TextInput
+                            placeholder="e.g. Vishnu"
+                            placeholderTextColor="#757575"
+                            value={name}
+                            onChangeText={setName}
+                            autoCapitalize="words"
+                            autoFocus
+                            style={styles.textInput}
                         />
                     </View>
+                </Animated.View>
+
+                {/* Bottom Button */}
+                <View style={styles.bottomSection}>
+                    <Pressable
+                        onPress={handleNext}
+                        disabled={!isValid}
+                        style={({ pressed }) => [
+                            styles.nextButton,
+                            !isValid && { opacity: 0.5 },
+                            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={['#FF6A00', '#E53B0A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.nextGradient}
+                        >
+                            <Text style={styles.nextText}>Next</Text>
+                            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                        </LinearGradient>
+                    </Pressable>
                 </View>
-            </View>
-        </SafeAreaView>
+            </SafeAreaView>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#0D0D0D' },
+    safeArea: { flex: 1 },
+    backButton: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 24, paddingVertical: 12, gap: 6,
+    },
+    backText: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular' },
+    content: { paddingHorizontal: 24, marginTop: 24 },
+    title: { color: '#FFFFFF', fontSize: 28, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
+    subtitle: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 36 },
+    inputContainer: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: '#1E1E1E', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 18,
+        borderWidth: 1, borderColor: '#353030',
+    },
+    textInput: {
+        flex: 1, color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_600SemiBold', padding: 0,
+    },
+    bottomSection: {
+        flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 24,
+    },
+    nextButton: { borderRadius: 14, overflow: 'hidden' },
+    nextGradient: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        paddingVertical: 18, borderRadius: 14,
+    },
+    nextText: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_700Bold' },
+});

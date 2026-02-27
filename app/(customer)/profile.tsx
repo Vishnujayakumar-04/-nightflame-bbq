@@ -1,131 +1,151 @@
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppStrings } from '../../constants/Strings';
-import { AppColors } from '../../constants/Colors';
+import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const clearCart = useCartStore(state => state.clearCart);
+    const { user } = useAuthStore();
 
-    // In a real app, user data comes from Firebase Auth and Firestore
-    const user = {
-        name: 'John Doe',
-        phone: '+91 9876543210',
-    };
+    const userName = user?.name || 'Customer';
+    const userPhone = user?.phoneNumber || '+91 9876543210';
 
     const handleLogout = () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to logout?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Logout',
-                    style: 'destructive',
-                    onPress: () => {
-                        clearCart();
-                        // TODO: Sign out from Firebase
-                        router.replace('/(auth)/welcome');
-                    }
+        Alert.alert('Logout', 'Are you sure you want to logout?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Logout', style: 'destructive',
+                onPress: () => {
+                    clearCart();
+                    router.replace('/(auth)/welcome');
                 }
-            ]
-        );
+            }
+        ]);
     };
 
-    const renderHeader = () => (
-        <View className="flex-row items-center justify-between px-6 py-4">
-            <Text className="text-white font-[Outfit_700Bold] text-2xl">
-                {AppStrings.profile}
-            </Text>
-        </View>
-    );
+    const menuItems = [
+        { icon: 'receipt-outline' as const, label: 'My Orders', onPress: () => router.push('/(customer)/orders') },
+        { icon: 'location-outline' as const, label: 'Saved Addresses', onPress: () => { } },
+        { icon: 'chatbubble-ellipses-outline' as const, label: 'Support & Help', onPress: () => { } },
+        { icon: 'information-circle-outline' as const, label: 'About NightFlame', onPress: () => { } },
+    ];
 
     return (
-        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-            {renderHeader()}
-
-            <ScrollView className="flex-1 px-6 pt-4">
-
-                {/* User Info Card */}
-                <View className="bg-surfaceCard p-6 rounded-3xl border border-divider mb-8 items-center">
-                    <View className="w-24 h-24 bg-surfaceLight rounded-full items-center justify-center mb-4 border-2 border-primary/30">
-                        <Ionicons name="person" size={40} color={AppColors.textSecondary} />
-                    </View>
-                    <Text className="text-white font-[Outfit_700Bold] text-2xl mb-1">
-                        {user.name}
-                    </Text>
-                    <Text className="text-textSecondary font-[Inter_400Regular] text-base">
-                        {user.phone}
-                    </Text>
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Profile</Text>
+                    <View style={{ width: 32 }} />
                 </View>
 
-                {/* Menu Sections */}
-                <View className="bg-surfaceCard rounded-3xl border border-divider overflow-hidden mb-6">
-
-                    <TouchableOpacity
-                        onPress={() => router.push('/(customer)/orders')}
-                        className="flex-row items-center justify-between p-5 border-b border-divider/50"
-                    >
-                        <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-surfaceLight rounded-full items-center justify-center mr-4">
-                                <Ionicons name="receipt-outline" size={20} color={AppColors.textPrimary} />
-                            </View>
-                            <Text className="text-white font-[Outfit_500Medium] text-base">
-                                {AppStrings.myOrders}
-                            </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={AppColors.textMuted} />
+                {/* User Card */}
+                <View style={styles.userCard}>
+                    <View style={styles.avatar}>
+                        <Ionicons name="person" size={36} color="#757575" />
+                    </View>
+                    <Text style={styles.userName}>{userName}</Text>
+                    <Text style={styles.userPhone}>{userPhone}</Text>
+                    <TouchableOpacity style={styles.editProfileBtn}>
+                        <Ionicons name="create-outline" size={16} color="#FF6A00" />
+                        <Text style={styles.editProfileText}>Edit Profile</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => { }}
-                        className="flex-row items-center justify-between p-5 border-b border-divider/50"
-                    >
-                        <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-surfaceLight rounded-full items-center justify-center mr-4">
-                                <Ionicons name="location-outline" size={20} color={AppColors.textPrimary} />
-                            </View>
-                            <Text className="text-white font-[Outfit_500Medium] text-base">
-                                Saved Addresses
-                            </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={AppColors.textMuted} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => { }}
-                        className="flex-row items-center justify-between p-5"
-                    >
-                        <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-surfaceLight rounded-full items-center justify-center mr-4">
-                                <Ionicons name="chatbubble-ellipses-outline" size={20} color={AppColors.textPrimary} />
-                            </View>
-                            <Text className="text-white font-[Outfit_500Medium] text-base">
-                                Support
-                            </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={AppColors.textMuted} />
-                    </TouchableOpacity>
-
                 </View>
 
-                {/* Logout Button */}
-                <TouchableOpacity
-                    onPress={handleLogout}
-                    className="flex-row items-center p-5 mb-10"
-                >
-                    <View className="w-10 h-10 bg-error/10 rounded-full items-center justify-center mr-4">
-                        <Ionicons name="log-out-outline" size={20} color={AppColors.error} />
+                {/* Menu Items */}
+                <View style={styles.menuCard}>
+                    {menuItems.map((item, index) => (
+                        <TouchableOpacity
+                            key={item.label}
+                            style={[
+                                styles.menuItem,
+                                index < menuItems.length - 1 && styles.menuItemBorder,
+                            ]}
+                            onPress={item.onPress}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <View style={styles.menuIcon}>
+                                    <Ionicons name={item.icon} size={20} color="#FFFFFF" />
+                                </View>
+                                <Text style={styles.menuItemText}>{item.label}</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#757575" />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Logout */}
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                    <View style={styles.logoutIcon}>
+                        <Ionicons name="log-out-outline" size={20} color="#EF5350" />
                     </View>
-                    <Text className="text-error font-[Outfit_600SemiBold] text-base">
-                        {AppStrings.logout}
-                    </Text>
+                    <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
 
+                {/* App Info */}
+                <Text style={styles.appInfo}>NightFlame BBQ v1.0.0</Text>
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#1A1818' },
+    header: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 20, height: 56,
+    },
+    headerTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_600SemiBold' },
+    userCard: {
+        backgroundColor: '#252121', marginHorizontal: 20, borderRadius: 24,
+        padding: 28, alignItems: 'center', marginBottom: 24,
+        borderWidth: 1, borderColor: '#353030',
+    },
+    avatar: {
+        width: 80, height: 80, borderRadius: 40, backgroundColor: '#1A1818',
+        alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+        borderWidth: 2, borderColor: 'rgba(255, 106, 0, 0.3)',
+    },
+    userName: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 4 },
+    userPhone: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 14 },
+    editProfileBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
+        backgroundColor: 'rgba(255, 106, 0, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 106, 0, 0.2)',
+    },
+    editProfileText: { color: '#FF6A00', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+    menuCard: {
+        backgroundColor: '#252121', marginHorizontal: 20, borderRadius: 20,
+        overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#353030',
+    },
+    menuItem: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        padding: 18,
+    },
+    menuItemBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(53, 48, 48, 0.5)' },
+    menuItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    menuIcon: {
+        width: 38, height: 38, borderRadius: 12, backgroundColor: '#1A1818',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    menuItemText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+    logoutBtn: {
+        flexDirection: 'row', alignItems: 'center',
+        marginHorizontal: 20, padding: 18, gap: 14,
+    },
+    logoutIcon: {
+        width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(239, 83, 80, 0.1)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    logoutText: { color: '#EF5350', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+    appInfo: {
+        color: '#555', fontSize: 12, fontFamily: 'Inter_400Regular',
+        textAlign: 'center', marginTop: 20,
+    },
+});

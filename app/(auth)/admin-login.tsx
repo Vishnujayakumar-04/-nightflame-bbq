@@ -1,104 +1,252 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, Image, Dimensions, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { AppStrings } from '../../constants/Strings';
-import { AppColors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '../../store/authStore';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
+const PIN_LENGTH = 4;
 
 export default function AdminLoginScreen() {
     const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [obscure, setObscure] = useState(true);
+    const [pin, setPin] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const inputRef = useRef<TextInput>(null);
+    const { adminLogin } = useAuthStore();
 
-    const isValid = email.includes('@') && password.length >= 6;
+    const handlePinChange = (value: string) => {
+        if (value.length <= PIN_LENGTH) {
+            setPin(value);
+            setError('');
+        }
+    };
 
-    const handleLogin = () => {
-        if (isValid) {
-            setIsLoading(true);
-            // TODO: Firebase Admin Login
-            setTimeout(() => {
-                setIsLoading(false);
-                router.replace('/(admin)');
-            }, 1000);
+    const handleLogin = async () => {
+        if (pin.length !== PIN_LENGTH) return;
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const success = await adminLogin(pin);
+            if (success) {
+                router.replace('/(admin)/dashboard');
+            } else {
+                setError('Invalid PIN. Try again.');
+                setPin('');
+            }
+        } catch {
+            setError('Login failed. Please try again.');
+            setPin('');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background px-6" edges={['top', 'bottom']}>
-            {/* Back Button */}
-            <View className="h-14 justify-center">
-                <Ionicons
-                    name="chevron-back"
-                    size={24}
-                    color="white"
-                    onPress={() => router.back()}
-                />
-            </View>
+        <View style={styles.container}>
+            <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
 
-            <View className="flex-1 justify-center pb-20">
-
-                {/* Admin Badge */}
-                <View className="items-center mb-10">
-                    <View className="flex-row items-center bg-primary/20 px-4 py-2 rounded-xl border border-primary/30">
-                        <Ionicons name="shield-checkmark" size={20} color={AppColors.flameOrange} />
-                        <Text className="text-primary font-[Poppins_700Bold] ml-2">
-                            {AppStrings.adminLogin}
-                        </Text>
-                    </View>
-                </View>
-
-                <Text className="text-white text-3xl font-[Poppins_700Bold] mb-2 text-center">
-                    Welcome Back
-                </Text>
-                <Text className="text-textSecondary text-sm font-[Inter_400Regular] mb-10 text-center">
-                    Sign in to manage your shop
-                </Text>
-
-                <Input
-                    placeholder={AppStrings.email}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    icon={<Ionicons name="mail-outline" size={20} color={AppColors.textSecondary} />}
-                />
-
-                <View className="relative">
-                    <Input
-                        placeholder={AppStrings.password}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={obscure}
-                        icon={<Ionicons name="lock-closed-outline" size={20} color={AppColors.textSecondary} />}
+                {/* Logo Header */}
+                <Animated.View entering={FadeIn.duration(800)} style={styles.headerContainer}>
+                    <Image
+                        source={require('../../assets/LOGO.png')}
+                        style={styles.logo}
+                        resizeMode="contain"
                     />
-                    <TouchableOpacity
-                        onPress={() => setObscure(!obscure)}
-                        className="absolute right-4 top-4"
-                        style={{ zIndex: 10 }}
+                    <Text style={styles.subtitle}>Roadside BBQ • Est. 2019</Text>
+                </Animated.View>
+
+                {/* Back Button */}
+                <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={18} color="#A5A2A2" />
+                        <Text style={styles.backText}>Back</Text>
+                    </Pressable>
+                </Animated.View>
+
+                {/* Admin Access */}
+                <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.contentSection}>
+                    <Text style={styles.title}>Admin Access</Text>
+                    <Text style={styles.description}>Enter your 4-digit staff PIN</Text>
+
+                    {/* PIN Display */}
+                    <Pressable
+                        onPress={() => inputRef.current?.focus()}
+                        style={styles.pinContainer}
                     >
-                        <Ionicons
-                            name={obscure ? "eye-off-outline" : "eye-outline"}
-                            size={22}
-                            color={AppColors.textSecondary}
-                        />
-                    </TouchableOpacity>
-                </View>
+                        {Array.from({ length: PIN_LENGTH }).map((_, index) => (
+                            <View
+                                key={index}
+                                style={[
+                                    styles.pinDot,
+                                    pin.length > index && styles.pinDotFilled,
+                                ]}
+                            />
+                        ))}
+                    </Pressable>
 
-                <View className="mt-8">
-                    <Button
-                        title={AppStrings.login}
-                        disabled={!isValid}
-                        loading={isLoading}
-                        onPress={handleLogin}
+                    {/* Hidden TextInput */}
+                    <TextInput
+                        ref={inputRef}
+                        value={pin}
+                        onChangeText={handlePinChange}
+                        keyboardType="number-pad"
+                        maxLength={PIN_LENGTH}
+                        autoFocus
+                        style={styles.hiddenInput}
                     />
-                </View>
 
-            </View>
-        </SafeAreaView>
+                    {/* Error Message */}
+                    {error ? (
+                        <Text style={styles.errorText}>{error}</Text>
+                    ) : null}
+
+                    {/* Enter Admin Panel Button */}
+                    <Pressable
+                        onPress={handleLogin}
+                        disabled={pin.length !== PIN_LENGTH || isLoading}
+                        style={({ pressed }) => [
+                            styles.loginButton,
+                            (pin.length !== PIN_LENGTH || isLoading) && { opacity: 0.5 },
+                            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                        ]}
+                    >
+                        <LinearGradient
+                            colors={['#FF6A00', '#E53B0A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.loginGradient}
+                        >
+                            <Text style={styles.loginText}>
+                                {isLoading ? 'Verifying...' : 'Enter Admin Panel →'}
+                            </Text>
+                        </LinearGradient>
+                    </Pressable>
+
+                    {/* Demo hint */}
+                    <Text style={styles.demoText}>Demo PIN: 1234</Text>
+                </Animated.View>
+
+            </SafeAreaView>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#0D0D0D',
+    },
+    safeArea: {
+        flex: 1,
+    },
+    headerContainer: {
+        alignItems: 'center',
+        paddingTop: 16,
+        marginBottom: 20,
+    },
+    logo: {
+        width: width * 0.35,
+        height: width * 0.35,
+    },
+    subtitle: {
+        color: '#A5A2A2',
+        fontSize: 13,
+        fontFamily: 'Inter_400Regular',
+        marginTop: -4,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 8,
+        gap: 6,
+    },
+    backText: {
+        color: '#A5A2A2',
+        fontSize: 15,
+        fontFamily: 'Inter_400Regular',
+    },
+    contentSection: {
+        paddingHorizontal: 24,
+        marginTop: 12,
+    },
+    title: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        fontFamily: 'Poppins_700Bold',
+        marginBottom: 6,
+    },
+    description: {
+        color: '#A5A2A2',
+        fontSize: 15,
+        fontFamily: 'Inter_400Regular',
+        marginBottom: 36,
+    },
+    pinContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#1E1E1E',
+        borderRadius: 16,
+        paddingVertical: 28,
+        paddingHorizontal: 40,
+        marginBottom: 8,
+        gap: 24,
+    },
+    pinDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#3A3A3A',
+    },
+    pinDotFilled: {
+        backgroundColor: '#FF6A00',
+    },
+    hiddenInput: {
+        position: 'absolute',
+        opacity: 0,
+        height: 0,
+        width: 0,
+    },
+    errorText: {
+        color: '#EF5350',
+        fontSize: 13,
+        fontFamily: 'Inter_400Regular',
+        textAlign: 'center',
+        marginTop: 12,
+    },
+    loginButton: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginTop: 32,
+        shadowColor: '#FF6A00',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    loginGradient: {
+        paddingVertical: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+    },
+    loginText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontFamily: 'Inter_700Bold',
+        letterSpacing: 0.5,
+    },
+    demoText: {
+        color: '#5A4030',
+        fontSize: 13,
+        fontFamily: 'Inter_400Regular',
+        textAlign: 'center',
+        marginTop: 20,
+    },
+});

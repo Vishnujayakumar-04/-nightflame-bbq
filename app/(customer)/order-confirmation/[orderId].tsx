@@ -1,62 +1,94 @@
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppStrings } from '../../../constants/Strings';
-import { AppColors } from '../../../constants/Colors';
-import { Button } from '../../../components/ui/Button';
+import { LinearGradient } from 'expo-linear-gradient';
+import { TouchableOpacity } from 'react-native';
 
-const formatOrderIdShort = (id: string) => `#${id.substring(0, 8).toUpperCase()}`;
+const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
 
 export default function OrderConfirmationScreen() {
     const router = useRouter();
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
 
-    // Ensure we have an ID for safe rendering
     const displayId = orderId || 'UNKNOWN';
 
     return (
-        <SafeAreaView className="flex-1 bg-background px-6" edges={['top', 'bottom']}>
-            <View className="flex-1 justify-center items-center">
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            <View style={styles.content}>
 
                 {/* Success Icon */}
-                <View className="w-24 h-24 rounded-full bg-success/10 border-2 border-success/30 items-center justify-center mb-8">
-                    <Ionicons name="checkmark" size={48} color={AppColors.success} />
+                <View style={styles.iconContainer}>
+                    <Ionicons name="checkmark" size={48} color="#4CAF50" />
                 </View>
 
-                <Text className="text-white text-3xl font-[Outfit_800ExtraBold] mb-2 text-center">
-                    {AppStrings.orderConfirmed}
-                </Text>
-
-                <Text className="text-textMuted text-sm font-[Inter_400Regular] mb-8 text-center px-4">
-                    Your order has been placed successfully
-                </Text>
+                <Text style={styles.title}>Order Confirmed!</Text>
+                <Text style={styles.subtitle}>Your delicious BBQ is being prepared.</Text>
 
                 {/* Order ID Card */}
-                <View className="bg-surfaceCard px-8 py-5 rounded-2xl border border-divider w-full items-center mb-16">
-                    <Text className="text-textMuted text-xs font-[Inter_500Medium] tracking-widest mb-1">
-                        {AppStrings.orderId.toUpperCase()}
-                    </Text>
-                    <Text className="text-primary text-2xl font-[Outfit_700Bold] tracking-widest">
-                        {formatOrderIdShort(displayId)}
-                    </Text>
+                <View style={styles.orderIdCard}>
+                    <Text style={styles.orderIdLabel}>ORDER ID</Text>
+                    <Text style={styles.orderIdValue}>{formatOrderIdShort(displayId)}</Text>
                 </View>
 
                 {/* Actions */}
-                <View className="w-full gap-y-4 pt-10">
-                    <Button
-                        title={AppStrings.trackOrder}
-                        icon={<Ionicons name="bus-outline" size={20} color="white" />}
+                <View style={styles.actionsContainer}>
+                    <TouchableOpacity
+                        style={styles.trackBtn}
                         onPress={() => router.replace(`/(customer)/order-tracking/${displayId}`)}
-                    />
-                    <Button
-                        title={AppStrings.backToMenu}
-                        variant="outline"
+                    >
+                        <LinearGradient
+                            colors={['#FF6A00', '#E53B0A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.btnGradient}
+                        >
+                            <Ionicons name="bicycle-outline" size={20} color="#FFFFFF" />
+                            <Text style={styles.btnText}>Track Order</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.backBtn}
                         onPress={() => router.replace('/(customer)/home')}
-                    />
+                    >
+                        <Text style={styles.backBtnText}>Back to Home</Text>
+                    </TouchableOpacity>
                 </View>
 
             </View>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#1A1818' },
+    content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    iconContainer: {
+        width: 96, height: 96, borderRadius: 48,
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderWidth: 2, borderColor: 'rgba(76, 175, 80, 0.3)',
+        alignItems: 'center', justifyContent: 'center',
+        marginBottom: 24,
+    },
+    title: { color: '#FFFFFF', fontSize: 26, fontFamily: 'Poppins_700Bold', marginBottom: 8, textAlign: 'center' },
+    subtitle: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 32 },
+    orderIdCard: {
+        backgroundColor: '#252121', borderRadius: 16, paddingVertical: 24, paddingHorizontal: 32,
+        alignItems: 'center', borderWidth: 1, borderColor: '#353030', width: '100%', marginBottom: 40,
+    },
+    orderIdLabel: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 2, marginBottom: 8 },
+    orderIdValue: { color: '#FF6A00', fontSize: 28, fontFamily: 'Poppins_700Bold', letterSpacing: 1 },
+    actionsContainer: { width: '100%', gap: 16 },
+    trackBtn: { borderRadius: 14, overflow: 'hidden' },
+    btnGradient: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+        paddingVertical: 18, borderRadius: 14,
+    },
+    btnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+    backBtn: {
+        alignItems: 'center', justifyContent: 'center', paddingVertical: 18,
+        borderRadius: 14, borderWidth: 1, borderColor: '#353030', backgroundColor: '#252121',
+    },
+    backBtnText: { color: '#A5A2A2', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+});

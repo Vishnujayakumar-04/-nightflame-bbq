@@ -1,6 +1,6 @@
 import { Stack, SplashScreen } from "expo-router";
 import { useEffect } from "react";
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins";
 import "./global.css";
 import { useAuthStore } from "../store/authStore";
@@ -11,6 +11,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
     const [loaded, error] = useFonts({
         Inter_400Regular,
+        Inter_500Medium,
         Inter_600SemiBold,
         Inter_700Bold,
         Poppins_700Bold,
@@ -35,7 +36,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#121212' } }}>
             {/* Auth Screens */}
             <Stack.Screen name="index" />
-            <Stack.Screen name="welcome" />
+            <Stack.Screen name="(auth)" />
 
             {/* Customer Tab Group */}
             <Stack.Screen name="(customer)" />

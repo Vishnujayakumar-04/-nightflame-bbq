@@ -1,18 +1,16 @@
-import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 
 import { AppStrings } from '../../constants/Strings';
-import { AppColors } from '../../constants/Colors';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
-import { Button } from '../../components/ui/Button';
+import { LinearGradient } from 'expo-linear-gradient';
 
-// Utility formatters
-const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
+const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
@@ -20,7 +18,7 @@ const formatTime = (date: Date) => {
 export default function CartScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { items, incrementQuantity, decrementQuantity, getCartTotal } = useCartStore();
+    const { items, incrementQuantity, decrementQuantity, getCartTotal, getItemCount } = useCartStore();
 
     const [selectedTime, setSelectedTime] = useState<Date | null>(null);
     const [isTimePickerVisible, setTimePickerVisible] = useState(false);
@@ -28,28 +26,23 @@ export default function CartScreen() {
 
     const { user } = useAuthStore();
     const placeOrder = useOrderStore(state => state.placeOrder);
-
     const cartTotal = getCartTotal();
+    const cartCount = getItemCount();
 
-    // Generate time slots (every 15 mins for next 3 hours)
     const timeSlots = useMemo(() => {
         const slots: Date[] = [];
         const now = new Date();
-
-        let maxPrepTime = 15; // default 15 mins
+        let maxPrepTime = 15;
         items.forEach(cartItem => {
             if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
                 maxPrepTime = cartItem.menuItem.preparationTime;
             }
         });
-
         const minPickupTime = new Date(now.getTime() + maxPrepTime * 60000);
-
         const startSlot = new Date(minPickupTime.getFullYear(), minPickupTime.getMonth(), minPickupTime.getDate(), minPickupTime.getHours(), 0, 0);
         while (startSlot < minPickupTime) {
             startSlot.setMinutes(startSlot.getMinutes() + 15);
         }
-
         for (let i = 0; i < 12; i++) {
             const time = new Date(startSlot.getTime() + i * 15 * 60000);
             slots.push(time);
@@ -60,27 +53,23 @@ export default function CartScreen() {
     const handlePlaceOrder = async () => {
         if (!selectedTime || !user) return;
         setIsPlacingOrder(true);
-
         let maxPrepTime = 15;
         items.forEach(cartItem => {
             if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
                 maxPrepTime = cartItem.menuItem.preparationTime;
             }
         });
-
         const estimatedPickupTime = Date.now() + (maxPrepTime * 60000);
-
         try {
             const newOrderId = await placeOrder({
                 userId: user.userId,
                 items,
                 totalAmount: cartTotal,
                 pickupTime: selectedTime.getTime(),
-                estimatedPickupTime: estimatedPickupTime,
+                estimatedPickupTime,
                 paymentStatus: 'Unpaid',
-                paymentMethod: 'Cash' // Defaults until UPI override in Order Tracking
+                paymentMethod: 'Cash'
             });
-
             useCartStore.getState().clearCart();
             router.replace(`/(customer)/order-confirmation/${newOrderId}`);
         } catch (error) {
@@ -90,187 +79,379 @@ export default function CartScreen() {
         }
     };
 
-    const renderHeader = () => (
-        <View className="flex-row items-center justify-between px-6 h-14">
-            <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2">
-                <Ionicons name="chevron-back" size={24} color={AppColors.textPrimary} />
-            </TouchableOpacity>
-            <Text className="text-white font-[Outfit_600SemiBold] text-lg">
-                {AppStrings.cart}
-            </Text>
-            <View className="w-10" />
-        </View>
-    );
-
-    const renderEmptyState = () => (
-        <View className="flex-1 items-center justify-center -mt-20">
-            <Ionicons name="bag-handle-outline" size={80} color={AppColors.textMuted} />
-            <Text className="text-textMuted font-[Outfit_500Medium] text-lg mt-4 mb-8">
-                {AppStrings.emptyCart}
-            </Text>
-            <View className="w-48">
-                <Button
-                    title="Browse Menu"
-                    onPress={() => router.push('/(customer)/home')}
-                    icon={<Ionicons name="restaurant" size={20} color="white" />}
-                />
-            </View>
-        </View>
-    );
-
-    const renderCartItems = () => (
-        <ScrollView className="flex-1 px-4 pt-4">
-            {items.map((cartItem) => {
-                const item = cartItem.menuItem;
-                return (
-                    <View
-                        key={item.itemId}
-                        className="bg-surfaceCard p-4 rounded-2xl mb-3 border border-divider flex-row items-center"
+    // Empty State
+    if (items.length === 0) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.emptyContainer}>
+                    <View style={styles.emptyIconBg}>
+                        <Ionicons name="cart-outline" size={60} color="#757575" />
+                    </View>
+                    <Text style={styles.emptyTitle}>Your cart is empty</Text>
+                    <Text style={styles.emptySubtitle}>Add some smoky deliciousness to get started</Text>
+                    <TouchableOpacity
+                        style={styles.browseButton}
+                        onPress={() => router.push('/(customer)/menu')}
                     >
-                        {/* Info */}
-                        <View className="flex-1">
-                            <Text className="text-white font-[Outfit_600SemiBold] text-base mb-1">
-                                {item.name}
-                            </Text>
-                            {item.isCombo && item.comboItems && item.comboItems.length > 0 && (
-                                <Text className="text-textMuted font-[Inter_400Regular] text-xs mb-1.5" numberOfLines={2}>
-                                    {item.comboItems.join(' • ')}
-                                </Text>
-                            )}
-                            <Text className="text-primary font-[Inter_500Medium] text-sm">
-                                {formatCurrency(item.price)}
-                            </Text>
-                        </View>
+                        <LinearGradient
+                            colors={['#FF6A00', '#E53B0A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.browseGradient}
+                        >
+                            <Text style={styles.browseText}>Browse Menu</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
-                        {/* Stepper */}
-                        <View className="flex-row items-center bg-surfaceLight rounded-xl px-1 py-1 mx-3 border border-divider">
-                            <TouchableOpacity
-                                onPress={() => decrementQuantity(item.itemId)}
-                                className="p-1 px-2"
-                            >
-                                <Ionicons name="remove" size={16} color={AppColors.flameOrange} />
-                            </TouchableOpacity>
-                            <Text className="text-white font-[Outfit_700Bold] text-base px-2">
-                                {cartItem.quantity}
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => incrementQuantity(item.itemId)}
-                                className="p-1 px-2"
-                            >
-                                <Ionicons name="add" size={16} color={AppColors.flameOrange} />
-                            </TouchableOpacity>
-                        </View>
+    return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+                    <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Cart ({cartCount})</Text>
+                <View style={{ width: 32 }} />
+            </View>
 
-                        {/* Item Total */}
-                        <View className="w-20 items-end">
-                            <Text className="text-white font-[Outfit_700Bold] text-base">
+            {/* Cart Items */}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+                {items.map((cartItem) => {
+                    const item = cartItem.menuItem;
+                    return (
+                        <View key={item.itemId} style={styles.cartItem}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cartItemName}>{item.name}</Text>
+                                {item.isCombo && item.comboItems && (
+                                    <Text style={styles.cartItemCombo} numberOfLines={1}>
+                                        {item.comboItems.join(' • ')}
+                                    </Text>
+                                )}
+                                <Text style={styles.cartItemPrice}>{formatCurrency(item.price)}</Text>
+                            </View>
+
+                            {/* Stepper */}
+                            <View style={styles.stepper}>
+                                <TouchableOpacity
+                                    onPress={() => decrementQuantity(item.itemId)}
+                                    style={styles.stepperBtn}
+                                >
+                                    <Ionicons name="remove" size={16} color="#FF6A00" />
+                                </TouchableOpacity>
+                                <Text style={styles.stepperCount}>{cartItem.quantity}</Text>
+                                <TouchableOpacity
+                                    onPress={() => incrementQuantity(item.itemId)}
+                                    style={styles.stepperBtn}
+                                >
+                                    <Ionicons name="add" size={16} color="#FF6A00" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.cartItemTotal}>
                                 {formatCurrency(item.price * cartItem.quantity)}
                             </Text>
                         </View>
+                    );
+                })}
+            </ScrollView>
+
+            {/* Bottom Checkout */}
+            <View style={[styles.checkoutBar, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+                <TouchableOpacity
+                    onPress={() => setTimePickerVisible(true)}
+                    style={styles.timePicker}
+                >
+                    <Ionicons name="time-outline" size={22} color="#FF6A00" />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.timeLabel}>{AppStrings.pickupTime}</Text>
+                        <Text style={[styles.timeValue, !selectedTime && { color: '#757575' }]}>
+                            {selectedTime ? formatTime(selectedTime) : AppStrings.selectPickupTime}
+                        </Text>
                     </View>
-                );
-            })}
-        </ScrollView>
-    );
+                    <Ionicons name="chevron-forward" size={18} color="#757575" />
+                </TouchableOpacity>
 
-    const renderBottomCheckout = () => (
-        <View
-            className="bg-surface px-5 pt-5 pb-8 rounded-t-3xl border-t border-divider shadow-2xl"
-            style={{ paddingBottom: Math.max(32, insets.bottom + 16) }}
-        >
-            {/* Time Picker Trigger */}
-            <TouchableOpacity
-                onPress={() => setTimePickerVisible(true)}
-                className="bg-surfaceLight p-4 rounded-2xl flex-row items-center border border-divider mb-5"
-            >
-                <Ionicons name="time-outline" size={24} color={AppColors.flameOrange} />
-                <View className="flex-1 ml-3">
-                    <Text className="text-textSecondary font-[Inter_400Regular] text-xs">
-                        {AppStrings.pickupTime}
-                    </Text>
-                    <Text className={`font-[Outfit_600SemiBold] text-base mt-0.5 ${selectedTime ? 'text-white' : 'text-textMuted'}`}>
-                        {selectedTime ? formatTime(selectedTime) : AppStrings.selectPickupTime}
-                    </Text>
+                <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Total</Text>
+                    <Text style={styles.totalValue}>{formatCurrency(cartTotal)}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={AppColors.textMuted} />
-            </TouchableOpacity>
 
-            {/* Totals & Submit */}
-            <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-white font-[Outfit_600SemiBold] text-xl">
-                    {AppStrings.total}
-                </Text>
-                <Text className="text-primary font-[Outfit_800ExtraBold] text-2xl tracking-tight">
-                    {formatCurrency(cartTotal)}
-                </Text>
+                <TouchableOpacity
+                    onPress={handlePlaceOrder}
+                    disabled={!selectedTime || isPlacingOrder}
+                    style={[styles.placeOrderBtn, (!selectedTime || isPlacingOrder) && { opacity: 0.5 }]}
+                >
+                    <LinearGradient
+                        colors={['#FF6A00', '#E53B0A']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.placeOrderGradient}
+                    >
+                        <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+                        <Text style={styles.placeOrderText}>
+                            {isPlacingOrder ? 'Placing...' : AppStrings.placeOrder}
+                        </Text>
+                    </LinearGradient>
+                </TouchableOpacity>
             </View>
 
-            <Button
-                title={AppStrings.placeOrder}
-                disabled={!selectedTime}
-                loading={isPlacingOrder}
-                onPress={handlePlaceOrder}
-                icon={<Ionicons name="checkmark-circle-outline" size={20} color="white" />}
-            />
-        </View>
-    );
-
-    // Time Picker Modal Render
-    const renderTimePickerModal = () => (
-        <Modal visible={isTimePickerVisible} transparent animationType="slide">
-            <Pressable
-                className="flex-1 bg-black/60 justify-end"
-                onPress={() => setTimePickerVisible(false)}
-            >
-                <Pressable
-                    className="bg-surface rounded-t-3xl p-6"
-                    style={{ paddingBottom: Math.max(32, insets.bottom + 16) }}
-                    onPress={(e) => e.stopPropagation()}
-                >
-                    <View className="items-center mb-6">
-                        <View className="w-10 h-1 bg-textMuted rounded-full" />
-                    </View>
-                    <Text className="text-white font-[Outfit_600SemiBold] text-xl mb-6">
-                        {AppStrings.selectPickupTime}
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2.5">
-                        {timeSlots.map((time) => {
-                            const isSelected = selectedTime?.getTime() === time.getTime();
-                            return (
-                                <TouchableOpacity
-                                    key={time.getTime()}
-                                    onPress={() => {
-                                        setSelectedTime(time);
-                                        setTimePickerVisible(false);
-                                    }}
-                                    className={`px-4 py-3 rounded-xl border ${isSelected
-                                        ? 'bg-primary border-primary'
-                                        : 'bg-surfaceLight border-divider'
-                                        }`}
-                                >
-                                    <Text className={`font-[Outfit_500Medium] text-sm ${isSelected ? 'text-white font-[Outfit_700Bold]' : 'text-textSecondary'
-                                        }`}>
-                                        {formatTime(time)}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
+            {/* Time Picker Modal */}
+            <Modal visible={isTimePickerVisible} transparent animationType="slide">
+                <Pressable style={styles.modalOverlay} onPress={() => setTimePickerVisible(false)}>
+                    <Pressable style={[styles.modalContent, { paddingBottom: Math.max(32, insets.bottom + 16) }]} onPress={(e) => e.stopPropagation()}>
+                        <View style={styles.modalHandle} />
+                        <Text style={styles.modalTitle}>{AppStrings.selectPickupTime}</Text>
+                        <View style={styles.timeGrid}>
+                            {timeSlots.map((time) => {
+                                const isSelected = selectedTime?.getTime() === time.getTime();
+                                return (
+                                    <TouchableOpacity
+                                        key={time.getTime()}
+                                        onPress={() => {
+                                            setSelectedTime(time);
+                                            setTimePickerVisible(false);
+                                        }}
+                                        style={[styles.timeSlot, isSelected && styles.timeSlotActive]}
+                                    >
+                                        <Text style={[styles.timeSlotText, isSelected && { color: '#FFFFFF', fontFamily: 'Inter_700Bold' }]}>
+                                            {formatTime(time)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </Pressable>
                 </Pressable>
-            </Pressable>
-        </Modal>
-    );
-
-    return (
-        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-            {renderHeader()}
-            {items.length === 0 ? renderEmptyState() : (
-                <>
-                    {renderCartItems()}
-                    {renderBottomCheckout()}
-                    {renderTimePickerModal()}
-                </>
-            )}
+            </Modal>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#1A1818',
+    },
+    // Empty state
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 32,
+    },
+    emptyIconBg: {
+        marginBottom: 20,
+    },
+    emptyTitle: {
+        color: '#FFFFFF',
+        fontSize: 22,
+        fontFamily: 'Poppins_700Bold',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        color: '#A5A2A2',
+        fontSize: 15,
+        fontFamily: 'Inter_400Regular',
+        textAlign: 'center',
+        marginBottom: 28,
+    },
+    browseButton: {
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    browseGradient: {
+        paddingHorizontal: 36,
+        paddingVertical: 16,
+        borderRadius: 14,
+    },
+    browseText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    // Header
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        height: 56,
+    },
+    headerTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    // Cart item
+    cartItem: {
+        backgroundColor: '#252121',
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    cartItemName: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'Inter_600SemiBold',
+        marginBottom: 2,
+    },
+    cartItemCombo: {
+        color: '#757575',
+        fontSize: 11,
+        fontFamily: 'Inter_400Regular',
+        marginBottom: 4,
+    },
+    cartItemPrice: {
+        color: '#FF6A00',
+        fontSize: 14,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    stepper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1A1818',
+        borderRadius: 12,
+        paddingHorizontal: 4,
+        paddingVertical: 4,
+        marginHorizontal: 12,
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    stepperBtn: {
+        padding: 6,
+        paddingHorizontal: 8,
+    },
+    stepperCount: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'Inter_700Bold',
+        paddingHorizontal: 8,
+    },
+    cartItemTotal: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+        width: 70,
+        textAlign: 'right',
+    },
+    // Checkout bar
+    checkoutBar: {
+        backgroundColor: '#252121',
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        borderTopWidth: 1,
+        borderColor: '#353030',
+    },
+    timePicker: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1A1818',
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    timeLabel: {
+        color: '#A5A2A2',
+        fontSize: 12,
+        fontFamily: 'Inter_400Regular',
+    },
+    timeValue: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'Inter_600SemiBold',
+        marginTop: 2,
+    },
+    totalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    totalLabel: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    totalValue: {
+        color: '#FF6A00',
+        fontSize: 24,
+        fontFamily: 'Inter_700Bold',
+    },
+    placeOrderBtn: {
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    placeOrderGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+        borderRadius: 14,
+        gap: 8,
+    },
+    placeOrderText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontFamily: 'Inter_700Bold',
+    },
+    // Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#252121',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#757575',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontFamily: 'Inter_600SemiBold',
+        marginBottom: 20,
+    },
+    timeGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    timeSlot: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: '#1A1818',
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    timeSlotActive: {
+        backgroundColor: '#FF6A00',
+        borderColor: '#FF6A00',
+    },
+    timeSlotText: {
+        color: '#A5A2A2',
+        fontFamily: 'Inter_600SemiBold',
+        fontSize: 14,
+    },
+});

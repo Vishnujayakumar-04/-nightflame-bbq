@@ -15,7 +15,7 @@ interface AuthState {
     setName: (name: string) => void;
     sendOtp: (phoneNumber: string) => Promise<void>;
     verifyOtp: (otp: string) => Promise<void>;
-    adminLogin: (email: string, password: string) => Promise<void>;
+    adminLogin: (pin: string) => Promise<boolean>;
     signOut: () => Promise<void>;
     checkAuthState: () => () => void; // Returns unsubscribe function
 }
@@ -87,31 +87,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    adminLogin: async (email, password) => {
+    adminLogin: async (pin) => {
         set({ isLoading: true, error: null });
-        try {
-            const userCred = await auth().signInWithEmailAndPassword(email, password);
 
-            const userRef = firestore().collection('users').doc(userCred.user.uid);
-            const doc = await userRef.get();
+        // Demo PIN verification — replace with server-side check in production
+        const ADMIN_PIN = '1234';
 
-            if (doc.exists()) {
-                set({ isLoading: false, user: doc.data() as User, error: null });
-            } else {
-                // Fallback if admin doc is missing but auth succeeds
-                set({
-                    isLoading: false,
-                    user: {
-                        userId: userCred.user.uid,
-                        name: 'Admin',
-                        phoneNumber: '',
-                        createdAt: Date.now(),
-                        role: 'admin'
-                    }
-                });
-            }
-        } catch {
-            set({ isLoading: false, error: 'Invalid credentials' });
+        // Simulate a brief network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (pin === ADMIN_PIN) {
+            set({
+                isLoading: false,
+                user: {
+                    userId: 'admin-local',
+                    name: 'Admin',
+                    phoneNumber: '',
+                    createdAt: Date.now(),
+                    role: 'admin'
+                },
+                error: null
+            });
+            return true;
+        } else {
+            set({ isLoading: false, error: 'Invalid PIN' });
+            return false;
         }
     },
 

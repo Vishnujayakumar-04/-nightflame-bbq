@@ -1,16 +1,15 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useState, useMemo } from 'react';
 
-import { AppStrings } from '../../constants/Strings';
-import { AppColors } from '../../constants/Colors';
-import { Order } from '../../types/models';
+import { Order, OrderStatus } from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useOrderStore } from '../../store/orderStore';
+import { LinearGradient } from 'expo-linear-gradient';
 
-// Utility formatters
-const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
+const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
@@ -22,28 +21,37 @@ const formatOrderIdShort = (id: string) => `#${id.substring(0, 8).toUpperCase()}
 export default function MyOrdersScreen() {
     const router = useRouter();
     const { orders, isLoading } = useOrderStore();
+    const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
 
-    const renderHeader = () => (
-        <View className="flex-row items-center justify-between px-6 h-14">
-            <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2">
-                <Ionicons name="chevron-back" size={24} color={AppColors.textPrimary} />
-            </TouchableOpacity>
-            <Text className="text-white font-[Outfit_600SemiBold] text-lg">
-                {AppStrings.myOrders}
-            </Text>
-            <View className="w-10" />
-        </View>
-    );
+    const activeOrders = useMemo(() => {
+        return orders.filter(o => o.status !== OrderStatus.completed);
+    }, [orders]);
+
+    const pastOrders = useMemo(() => {
+        return orders.filter(o => o.status === OrderStatus.completed);
+    }, [orders]);
+
+    const displayOrders = activeTab === 'active' ? activeOrders : pastOrders;
 
     const renderEmptyState = () => (
-        <View className="flex-1 items-center justify-center -mt-20 px-8 text-center">
-            <Ionicons name="receipt-outline" size={80} color={AppColors.textMuted} />
-            <Text className="text-textMuted font-[Outfit_500Medium] text-lg mt-4 mb-2">
-                {AppStrings.noOrders}
+        <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={60} color="#757575" />
+            <Text style={styles.emptyTitle}>
+                {activeTab === 'active' ? 'No active orders' : 'No past orders'}
             </Text>
-            <Text className="text-textSecondary font-[Inter_400Regular] text-sm text-center">
-                Place your first order to see it here!
-            </Text>
+            <TouchableOpacity
+                style={styles.orderNowBtn}
+                onPress={() => router.push('/(customer)/menu')}
+            >
+                <LinearGradient
+                    colors={['#FF6A00', '#E53B0A']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.orderNowGradient}
+                >
+                    <Text style={styles.orderNowText}>Order Now</Text>
+                </LinearGradient>
+            </TouchableOpacity>
         </View>
     );
 
@@ -53,36 +61,29 @@ export default function MyOrdersScreen() {
         return (
             <TouchableOpacity
                 onPress={() => router.push(`/(customer)/order-tracking/${item.orderId}`)}
-                className="bg-surfaceCard p-4 rounded-2xl mb-4 border border-divider"
+                style={styles.orderCard}
+                activeOpacity={0.85}
             >
-                <View className="flex-row justify-between items-center mb-3">
-                    <Text className="text-white font-[Outfit_700Bold] text-base">
-                        {formatOrderIdShort(item.orderId)}
-                    </Text>
+                <View style={styles.orderHeader}>
+                    <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
                     <StatusBadge status={item.status} />
                 </View>
 
-                <Text className="text-textSecondary font-[Inter_400Regular] text-sm mb-4" numberOfLines={2}>
-                    {itemsSummary}
-                </Text>
+                <Text style={styles.orderItems} numberOfLines={2}>{itemsSummary}</Text>
 
-                <View className="flex-row justify-between items-center pt-3 border-t border-divider/50">
-                    <View className="flex-row items-center">
-                        <Ionicons name="time-outline" size={14} color={AppColors.textMuted} />
-                        <Text className="text-textSecondary font-[Inter_400Regular] text-xs ml-1.5 mr-3">
-                            {formatTime(item.pickupTime)}
-                        </Text>
-                        <Text className="text-textSecondary font-[Inter_400Regular] text-xs">
-                            {formatDate(item.timestamp)}
-                        </Text>
+                <View style={styles.orderFooter}>
+                    <View style={styles.orderMeta}>
+                        <Ionicons name="time-outline" size={14} color="#757575" />
+                        <Text style={styles.orderMetaText}>{formatTime(item.pickupTime)}</Text>
+                        <Text style={styles.orderMetaText}>{formatDate(item.timestamp)}</Text>
                     </View>
-
-                    <View className="items-end">
-                        <Text className="text-primary font-[Outfit_600SemiBold] text-base">
-                            {formatCurrency(item.totalAmount)}
-                        </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.orderTotal}>{formatCurrency(item.totalAmount)}</Text>
                         {item.paymentStatus && (
-                            <Text className={`font-[Inter_600SemiBold] text-[10px] mt-0.5 ${item.paymentStatus === 'Paid' ? 'text-success' : 'text-error'}`}>
+                            <Text style={[
+                                styles.paymentBadge,
+                                { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }
+                            ]}>
                                 {item.paymentStatus}
                             </Text>
                         )}
@@ -93,18 +94,41 @@ export default function MyOrdersScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-            {renderHeader()}
+        <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.title}>My Orders</Text>
+            </View>
+
+            {/* Tabs */}
+            <View style={styles.tabContainer}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+                    onPress={() => setActiveTab('active')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+                        Active ({activeOrders.length})
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'past' && styles.tabActive]}
+                    onPress={() => setActiveTab('past')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+                        Past ({pastOrders.length})
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
             {isLoading ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color={AppColors.flameOrange} />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#FF6A00" />
                 </View>
-            ) : orders.length === 0 ? (
+            ) : displayOrders.length === 0 ? (
                 renderEmptyState()
             ) : (
                 <FlatList
-                    data={orders}
+                    data={displayOrders}
                     keyExtractor={(item) => item.orderId}
                     renderItem={renderOrderItem}
                     contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
@@ -114,3 +138,131 @@ export default function MyOrdersScreen() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#1A1818',
+    },
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 16,
+    },
+    title: {
+        color: '#FFFFFF',
+        fontSize: 26,
+        fontFamily: 'Poppins_700Bold',
+        fontStyle: 'italic',
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        marginHorizontal: 20,
+        backgroundColor: '#252121',
+        borderRadius: 14,
+        padding: 4,
+        marginBottom: 16,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    tabActive: {
+        backgroundColor: '#FF6A00',
+    },
+    tabText: {
+        color: '#A5A2A2',
+        fontSize: 14,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    tabTextActive: {
+        color: '#FFFFFF',
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 32,
+    },
+    emptyTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'Inter_600SemiBold',
+        marginTop: 16,
+        marginBottom: 20,
+    },
+    orderNowBtn: {
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    orderNowGradient: {
+        paddingHorizontal: 32,
+        paddingVertical: 14,
+        borderRadius: 14,
+    },
+    orderNowText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    orderCard: {
+        backgroundColor: '#252121',
+        padding: 16,
+        borderRadius: 18,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    orderHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    orderId: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    orderItems: {
+        color: '#A5A2A2',
+        fontSize: 13,
+        fontFamily: 'Inter_400Regular',
+        marginBottom: 14,
+    },
+    orderFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(53, 48, 48, 0.5)',
+    },
+    orderMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    orderMetaText: {
+        color: '#A5A2A2',
+        fontSize: 12,
+        fontFamily: 'Inter_400Regular',
+    },
+    orderTotal: {
+        color: '#FF6A00',
+        fontSize: 17,
+        fontFamily: 'Inter_700Bold',
+    },
+    paymentBadge: {
+        fontSize: 10,
+        fontFamily: 'Inter_600SemiBold',
+        marginTop: 2,
+    },
+});

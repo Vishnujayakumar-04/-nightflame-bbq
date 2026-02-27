@@ -15,7 +15,7 @@ export default function IndexScreen() {
     }
 
     if (!user) {
-        return <Redirect href="/welcome" />;
+        return <Redirect href="/(auth)/welcome" />;
     }
 
     if (user.role === 'admin') {
