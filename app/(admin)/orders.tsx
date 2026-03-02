@@ -1,7 +1,8 @@
-import { View, Text, FlatList, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Order, OrderStatus } from '../../types/models';
 import { useOrderStore } from '../../store/orderStore';
@@ -28,6 +29,29 @@ export default function AdminOrdersScreen() {
         return unsub;
     }, []);
 
+    const { updateOrderStatus } = useOrderStore();
+
+    const handleStatusUpdate = (orderId: string, currentStatus: OrderStatus) => {
+        const statuses: { label: string, status: OrderStatus }[] = [
+            { label: 'Pending', status: OrderStatus.pending },
+            { label: 'Start Preparing', status: OrderStatus.preparing },
+            { label: 'Ready for Pickup', status: OrderStatus.ready },
+            { label: 'Complete Order', status: OrderStatus.completed },
+        ];
+
+        Alert.alert(
+            'Update Status',
+            'Move order to next stage:',
+            [
+                ...statuses.map(s => ({
+                    text: s.label,
+                    onPress: () => updateOrderStatus(orderId, s.status)
+                })),
+                { text: 'Cancel', style: 'cancel' }
+            ]
+        );
+    };
+
     const activeOrders = useMemo(() => {
         return orders.filter(o => o.status !== OrderStatus.completed);
     }, [orders]);
@@ -49,41 +73,47 @@ export default function AdminOrdersScreen() {
         return map[filter] || '';
     };
 
-    const renderOrderCard = ({ item }: { item: Order }) => (
-        <TouchableOpacity style={styles.orderCard} activeOpacity={0.85}>
-            <View style={styles.cardHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
-                    {!item.userId && (
-                        <View style={styles.walkInTag}>
-                            <Text style={styles.walkInTagText}>Walk-in</Text>
-                        </View>
-                    )}
+    const renderOrderCard = ({ item, index }: { item: Order, index: number }) => (
+        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
+            <TouchableOpacity
+                style={styles.orderCard}
+                activeOpacity={0.85}
+                onPress={() => handleStatusUpdate(item.orderId, item.status)}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
+                        {!item.userId && (
+                            <View style={styles.walkInTag}>
+                                <Text style={styles.walkInTagText}>Walk-in</Text>
+                            </View>
+                        )}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <StatusBadge status={item.status} />
+                        <Ionicons name="chevron-forward" size={16} color="#757575" />
+                    </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <StatusBadge status={item.status} />
-                    <Ionicons name="chevron-forward" size={16} color="#757575" />
-                </View>
-            </View>
 
-            <Text style={styles.customerName}>{item.customerName || 'Customer'}</Text>
-            <Text style={styles.itemsList} numberOfLines={1}>
-                {item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
-            </Text>
+                <Text style={styles.customerName}>{item.customerName || 'Customer'}</Text>
+                <Text style={styles.itemsList} numberOfLines={1}>
+                    {item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
+                </Text>
 
-            <View style={styles.cardFooter}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="time-outline" size={12} color="#757575" />
-                    <Text style={styles.timeText}>{getRelativeTime(item.timestamp)}</Text>
+                <View style={styles.cardFooter}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="time-outline" size={12} color="#757575" />
+                        <Text style={styles.timeText}>{getRelativeTime(item.timestamp)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.paymentTag, { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }]}>
+                            {item.paymentMethod} · {item.paymentStatus}
+                        </Text>
+                        <Text style={styles.amount}>{formatCurrency(item.totalAmount)}</Text>
+                    </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={[styles.paymentTag, { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }]}>
-                        {item.paymentMethod} · {item.paymentStatus}
-                    </Text>
-                    <Text style={styles.amount}>{formatCurrency(item.totalAmount)}</Text>
-                </View>
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </Animated.View>
     );
 
     return (

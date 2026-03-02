@@ -3,18 +3,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { MenuItem } from '../../types/models';
 import { useMenuStore } from '../../store/menuStore';
-import firestore from '@react-native-firebase/firestore';
+import { db } from '../../firebaseConfig';
+import { collection, doc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 
-const CATEGORIES = ['All', 'BBQ', 'Wings', 'Combo', 'Starters', 'Mains', 'Sides', 'Drinks'];
+const CATEGORIES = ['All', 'BBQ', 'Wings', 'Combo'];
 
 export default function MenuManagementScreen() {
     const router = useRouter();
-    const { menuItems, subscribeToMenu, updateMenuItem } = useMenuStore();
+    const { menuItems, subscribeToMenu, updateMenuItem, isLoading } = useMenuStore();
     const [selectedCategory, setSelectedCategory] = useState('All');
 
     useEffect(() => {
@@ -38,7 +40,7 @@ export default function MenuManagementScreen() {
                 text: 'Delete', style: 'destructive',
                 onPress: async () => {
                     try {
-                        await firestore().collection('menuItems').doc(itemId).delete();
+                        await deleteDoc(doc(db, 'menuItems', itemId));
                     } catch {
                         Alert.alert('Error', 'Failed to delete item');
                     }
@@ -54,41 +56,41 @@ export default function MenuManagementScreen() {
                 text: 'Proceed', style: 'destructive',
                 onPress: async () => {
                     try {
-                        const batch = firestore().batch();
-                        const snapshot = await firestore().collection('menuItems').get();
-                        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                        const batch = writeBatch(db);
+                        const snapshot = await getDocs(collection(db, 'menuItems'));
+                        snapshot.docs.forEach(d => batch.delete(d.ref));
 
                         const actualMenu = [
                             { name: 'Grilled Leg Piece – 1 Pc', price: 140, preparationTime: 20, category: 'BBQ', available: true, isCombo: false, description: 'Single grilled leg piece' },
                             { name: 'Grilled Thigh – 1 Pc', price: 140, preparationTime: 20, category: 'BBQ', available: true, isCombo: false, description: 'Single grilled thigh piece' },
-                            { name: 'Grilled Drumstick – 2 Pcs', price: 120, preparationTime: 20, category: 'BBQ', available: true, isCombo: false, description: 'Two grilled drumsticks' },
-                            { name: 'Chicken Lollipop – 5 Pcs', price: 120, preparationTime: 20, category: 'Wings', available: true, isCombo: false, description: 'Five pieces of chicken lollipop' },
-                            { name: 'BBQ Wings – 6 Pcs', price: 120, preparationTime: 20, category: 'Wings', available: true, isCombo: false, description: 'Six pieces of BBQ wings' },
+                            { name: 'Grilled Drumstick – 2 Pcs', price: 120, preparationTime: 20, category: 'BBQ', available: true, isCombo: false, description: 'Two grilled drumstick pieces' },
+                            { name: 'Chicken Lollipop – 5 Pcs', price: 120, preparationTime: 20, category: 'Wings', available: true, isCombo: false, description: 'Five crunchy chicken lollipops' },
+                            { name: 'BBQ Wings – 6 Pcs', price: 120, preparationTime: 20, category: 'Wings', available: true, isCombo: false, description: 'Six smoky BBQ wings' },
                             { name: 'Wings & Lollipop Combo', price: 219, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['Wings (6 Pcs)', 'Lollipop (5 Pcs)'], description: 'Best entry combo' },
-                            { name: 'Grill Duo Combo', price: 259, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg', '1 Thigh'], description: 'Classic 2-piece grill' },
-                            { name: 'Grill Mix Combo', price: 339, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg', 'Drumstick (2 Pcs)', 'Wings (6 Pcs)'], description: 'Mixed grill platter' },
-                            { name: 'Mini Party Combo', price: 359, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg', 'Wings (6 Pcs)', 'Lollipop (5 Pcs)'], description: 'Perfect for small gatherings' },
-                            { name: 'Family Combo', price: 579, preparationTime: 25, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs', 'Wings (6 Pcs)', 'Lollipop (5 Pcs)', 'Drumstick (2 Pcs)'], description: 'Large combo for the whole family' },
-                            { name: 'NightFlame Mega Grill', price: 799, preparationTime: 30, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs', '2 Thighs', 'Wings (6 Pcs)', 'Lollipop (5 Pcs)', 'Drumstick (2 Pcs)'], description: 'The ultimate Mega Grill' },
+                            { name: 'Grill Duo Combo', price: 259, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg (140)', '1 Thigh (140)'], description: 'Classic 2-piece grill' },
+                            { name: 'Grill Mix Combo', price: 339, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg (140)', 'Drumstick 2pcs (120)', 'Wings (120)'], description: 'Variety mix' },
+                            { name: 'Mini Party Combo', price: 359, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['Leg (140)', 'Wings (120)', 'Lollipop (120)'], description: 'For small gatherings' },
+                            { name: 'Family Combo', price: 579, preparationTime: 25, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs (280)', 'Wings (120)', 'Lollipop (120)', 'Drumstick (120)'], description: 'Mega family pack' },
+                            { name: 'NightFlame Mega Grill', price: 799, preparationTime: 30, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs (280)', '2 Thighs (280)', 'Wings (120)', 'Lollipop (120)', 'Drumstick (120)'], description: 'The absolute feast' },
                         ];
 
                         actualMenu.forEach(item => {
-                            const newRef = firestore().collection('menuItems').doc();
-                            batch.set(newRef, item);
+                            const newRef = doc(collection(db, 'menuItems'));
+                            batch.set(newRef, { ...item, createdAt: Date.now() });
                         });
 
                         await batch.commit();
-                        Alert.alert('Success', 'Menu seeded successfully!');
+                        Alert.alert('Success', 'Shop Menu Created Successfully!');
                     } catch (e: any) {
-                        Alert.alert('Error', e.message);
+                        Alert.alert('Error', `Failed to seed menu: ${e.message}`);
                     }
                 }
             }
         ]);
     };
 
-    const renderMenuItem = ({ item }: { item: MenuItem }) => (
-        <View style={styles.menuCard}>
+    const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
+        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={styles.menuCard}>
             {item.imageUrl ? (
                 <Image source={{ uri: item.imageUrl }} style={styles.menuImage} resizeMode="cover" />
             ) : (
@@ -121,7 +123,7 @@ export default function MenuManagementScreen() {
                     <Ionicons name="trash-outline" size={18} color="#EF5350" />
                 </TouchableOpacity>
             </View>
-        </View>
+        </Animated.View>
     );
 
     return (
@@ -157,8 +159,23 @@ export default function MenuManagementScreen() {
                 ))}
             </ScrollView>
 
-            {/* Item count */}
-            <Text style={styles.itemCount}>{filteredItems.length} items</Text>
+            {/* Item count or Empty State Banner */}
+            {menuItems.length === 0 && !isLoading ? (
+                <Animated.View entering={FadeInDown.duration(600)} style={styles.setupBanner}>
+                    <View style={styles.setupIcon}>
+                        <Ionicons name="sparkles" size={32} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.setupTitle}>Setup Your Shop</Text>
+                        <Text style={styles.setupSubtitle}>Quickly add your official NightFlame items, prices, and combos.</Text>
+                    </View>
+                    <TouchableOpacity style={styles.setupActionBtn} onPress={handleSeedMenu}>
+                        <Text style={styles.setupActionText}>Start</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            ) : (
+                <Text style={styles.itemCount}>{filteredItems.length} items</Text>
+            )}
 
             {/* Menu Items List */}
             <FlatList
@@ -170,8 +187,8 @@ export default function MenuManagementScreen() {
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 ListFooterComponent={
                     <TouchableOpacity style={styles.seedButton} onPress={handleSeedMenu}>
-                        <Ionicons name="refresh-outline" size={16} color="#FF6A00" />
-                        <Text style={styles.seedText}>Seed Default Menu</Text>
+                        <Ionicons name="sparkles-outline" size={16} color="#FF6A00" />
+                        <Text style={styles.seedText}>Setup Official Store Menu</Text>
                     </TouchableOpacity>
                 }
             />
@@ -219,7 +236,22 @@ const styles = StyleSheet.create({
     seedButton: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         marginTop: 20, padding: 14, borderRadius: 14,
-        backgroundColor: 'rgba(255, 106, 0, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 106, 0, 0.3)',
+        backgroundColor: 'rgba(255, 106, 0, 0.05)', borderWidth: 1, borderColor: 'rgba(53, 48, 48, 0.5)',
     },
-    seedText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    seedText: { color: '#757575', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+    setupBanner: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF6A00',
+        marginHorizontal: 20, padding: 20, borderRadius: 20, gap: 16, marginBottom: 20,
+        elevation: 10, shadowColor: '#FF6A00', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12,
+    },
+    setupIcon: {
+        width: 54, height: 54, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    setupTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_700Bold' },
+    setupSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2, lineHeight: 18 },
+    setupActionBtn: {
+        backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12,
+    },
+    setupActionText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_700Bold' },
 });

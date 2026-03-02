@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import firestore from '@react-native-firebase/firestore';
+import { db } from '../firebaseConfig';
+import { collection, doc, query, orderBy, where, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { Order, OrderStatus } from '../types/models';
 import { useAuthStore } from './authStore';
 
@@ -29,14 +30,15 @@ export const useOrderStore = create<OrderState>((set) => ({
             return () => { };
         }
 
-        let query = firestore().collection('orders').orderBy('timestamp', 'desc');
+        let q = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
 
         // If not admin, only fetch their own orders
         if (user.role !== 'admin') {
-            query = query.where('userId', '==', user.userId);
+            q = query(q, where('userId', '==', user.userId));
         }
 
-        const unsubscribe = query.onSnapshot(
+        const unsubscribe = onSnapshot(
+            q,
             (snapshot) => {
                 const fetchedOrders: Order[] = snapshot.docs.map(doc => ({
                     ...(doc.data() as Omit<Order, 'orderId'>),
@@ -55,7 +57,7 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     placeOrder: async (orderData) => {
         try {
-            const orderRef = firestore().collection('orders').doc();
+            const orderRef = doc(collection(db, 'orders'));
 
             const newOrder: Order = {
                 ...orderData,
@@ -64,7 +66,7 @@ export const useOrderStore = create<OrderState>((set) => ({
                 timestamp: Date.now()
             };
 
-            await orderRef.set(newOrder);
+            await setDoc(orderRef, newOrder);
             return newOrder.orderId;
         } catch (e: any) {
             console.error("Failed to place order", e);
@@ -75,7 +77,7 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     updateOrderStatus: async (orderId, status) => {
         try {
-            await firestore().collection('orders').doc(orderId).update({ status });
+            await updateDoc(doc(db, 'orders', orderId), { status });
         } catch (e: any) {
             console.error("Failed to update order status", e);
         }
@@ -83,7 +85,7 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     updateOrderPayment: async (orderId, updates) => {
         try {
-            await firestore().collection('orders').doc(orderId).update(updates);
+            await updateDoc(doc(db, 'orders', orderId), updates);
         } catch (e: any) {
             console.error("Failed to update order payment", e);
             throw e;

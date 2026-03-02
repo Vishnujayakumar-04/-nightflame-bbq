@@ -1,14 +1,18 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useCartStore } from '../../store/cartStore';
 import { useMenuStore } from '../../store/menuStore';
 import { useAuthStore } from '../../store/authStore';
+import { useShopStore } from '../../store/shopStore';
 
-const { width } = Dimensions.get('window');
+const SHOP_ADDRESS = "Villianur Main Rd, beside of kv.tex, Natesan Nagar, Puducherry, 605005";
+const SHOP_MAPS_URL = "https://maps.app.goo.gl/FHdBWbXMXDW3pe4M6";
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 
@@ -17,10 +21,15 @@ export default function HomeScreen() {
     const { addItem } = useCartStore();
     const { menuItems, subscribeToMenu } = useMenuStore();
     const { user } = useAuthStore();
+    const { status, subscribeToStatus } = useShopStore();
 
     useEffect(() => {
-        const unsubscribe = subscribeToMenu();
-        return unsubscribe;
+        const unsubMenu = subscribeToMenu();
+        const unsubStatus = subscribeToStatus();
+        return () => {
+            unsubMenu();
+            unsubStatus();
+        };
     }, []);
 
 
@@ -37,59 +46,86 @@ export default function HomeScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.welcomeText}>Welcome back 👋</Text>
+                        <Text style={styles.welcomeText}>Welcome to NightFlame 🔥</Text>
                         <Text style={styles.userName}>{userName}</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => router.push('/(customer)/profile')}
                         style={styles.profileButton}
                     >
-                        <Ionicons name="flame" size={24} color="#FF6A00" />
+                        <Ionicons name="person-outline" size={24} color="#A5A2A2" />
                     </TouchableOpacity>
                 </View>
 
+                {/* Status Board */}
+                <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.statusBoardWrapper}>
+                    <View style={[styles.statusSign, !status?.isOpen && styles.statusSignClosed]}>
+                        <View style={styles.signChain} />
+                        <View style={styles.signContent}>
+                            <Ionicons name={status?.isOpen ? "sunny" : "moon"} size={22} color="#FFFFFF" />
+                            <Text style={styles.statusLabelText}>WE'RE {status?.isOpen ? 'OPEN' : 'CLOSED'}</Text>
+                        </View>
+                        <Text style={styles.timeLabelText}>
+                            {status?.isOpen
+                                ? `${status.openTime} - ${status.closeTime}`
+                                : status?.message || "Come tomorrow to Have Spicy Chicken!"}
+                        </Text>
+                    </View>
+                </Animated.View>
+
                 {/* Location Bar */}
-                <View style={styles.locationBar}>
-                    <Ionicons name="location-outline" size={16} color="#FF6A00" />
-                    <Text style={styles.locationText}>MG Road, Near Bus Stand • Open until 11 PM</Text>
-                </View>
+                <TouchableOpacity
+                    style={styles.locationBar}
+                    onPress={() => { /* Opne Maps link */ }}
+                >
+                    <View style={styles.locationIcon}>
+                        <Ionicons name="location" size={16} color="#FF6A00" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.locationTitle}>Our Location</Text>
+                        <Text style={styles.locationText} numberOfLines={2}>{SHOP_ADDRESS}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#757575" />
+                </TouchableOpacity>
 
                 {/* Today's Special Banner */}
                 {specialItem && (
-                    <TouchableOpacity
-                        style={styles.specialBanner}
-                        onPress={() => router.push('/(customer)/menu')}
-                        activeOpacity={0.9}
-                    >
-                        {specialItem.imageUrl ? (
-                            <Image
-                                source={{ uri: specialItem.imageUrl }}
-                                style={styles.specialImage}
-                                resizeMode="cover"
-                            />
-                        ) : (
-                            <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />
-                        )}
-                        <View style={styles.specialOverlay}>
-                            <View style={styles.specialBadge}>
-                                <Text style={styles.specialBadgeText}>🔥 TODAY'S SPECIAL</Text>
+                    <Animated.View entering={FadeInDown.delay(100).duration(600)}>
+                        <TouchableOpacity
+                            style={styles.specialBanner}
+                            onPress={() => router.push('/(customer)/menu')}
+                            activeOpacity={0.9}
+                        >
+                            {specialItem.imageUrl ? (
+                                <Image
+                                    source={{ uri: specialItem.imageUrl }}
+                                    style={styles.specialImage}
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />
+                            )}
+                            <View style={styles.specialOverlay}>
+                                <View style={styles.specialBadge}>
+                                    <Text style={styles.specialBadgeText}>🔥 TODAY'S SPECIAL</Text>
+                                </View>
+                                <Text style={styles.specialTitle}>{specialItem.name}</Text>
+                                <TouchableOpacity
+                                    style={styles.orderNowBtn}
+                                    onPress={() => {
+                                        addItem(specialItem);
+                                        router.push('/(customer)/cart');
+                                    }}
+                                >
+                                    <Text style={styles.orderNowText}>Order Now</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={styles.specialTitle}>{specialItem.name}</Text>
-                            <TouchableOpacity
-                                style={styles.orderNowBtn}
-                                onPress={() => {
-                                    addItem(specialItem);
-                                    router.push('/(customer)/cart');
-                                }}
-                            >
-                                <Text style={styles.orderNowText}>Order Now</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    </Animated.View>
                 )}
 
                 {/* Stats Row */}
-                <View style={styles.statsRow}>
+                <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.statsRow}>
                     <View style={styles.statCard}>
                         <Ionicons name="star" size={20} color="#FFD700" />
                         <Text style={styles.statValue}>4.8 Rating</Text>
@@ -105,52 +141,54 @@ export default function HomeScreen() {
                         <Text style={styles.statValue}>{menuItems.length} Items</Text>
                         <Text style={styles.statLabel}>On menu today</Text>
                     </View>
-                </View>
+                </Animated.View>
 
                 {/* Popular Now Section */}
-                <View style={styles.sectionHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="trending-up" size={18} color="#FFFFFF" />
-                        <Text style={styles.sectionTitle}>Popular Now</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => router.push('/(customer)/menu')}>
-                        <Text style={styles.seeAllText}>See all</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-                >
-                    {popularItems.map((item) => (
-                        <TouchableOpacity
-                            key={item.itemId}
-                            style={styles.popularCard}
-                            onPress={() => router.push('/(customer)/menu')}
-                            activeOpacity={0.85}
-                        >
-                            {item.imageUrl ? (
-                                <Image
-                                    source={{ uri: item.imageUrl }}
-                                    style={styles.popularImage}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <View style={[styles.popularImage, { backgroundColor: '#2A2A2A' }]}>
-                                    <Ionicons name="restaurant" size={28} color="#555" />
-                                </View>
-                            )}
-                            <View style={styles.popularInfo}>
-                                <View style={styles.vegBadge}>
-                                    <View style={[styles.vegDot, { backgroundColor: item.category === 'Combo' ? '#FF6A00' : '#4CAF50' }]} />
-                                </View>
-                                <Text style={styles.popularName} numberOfLines={1}>{item.name}</Text>
-                                <Text style={styles.popularPrice}>{formatCurrency(item.price)}</Text>
-                            </View>
+                <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+                    <View style={styles.sectionHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="trending-up" size={18} color="#FFFFFF" />
+                            <Text style={styles.sectionTitle}>Popular Now</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => router.push('/(customer)/menu')}>
+                            <Text style={styles.seeAllText}>See all</Text>
                         </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                    </View>
+
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 20, gap: 16 }}
+                    >
+                        {popularItems.map((item) => (
+                            <TouchableOpacity
+                                key={item.itemId}
+                                style={styles.popularCardContainer}
+                                onPress={() => router.push('/(customer)/menu')}
+                                activeOpacity={0.85}
+                            >
+                                <View style={styles.popularCardOuter}>
+                                    {item.imageUrl ? (
+                                        <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />
+                                    ) : (
+                                        <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
+                                            <Ionicons name="restaurant" size={24} color="#555" />
+                                        </View>
+                                    )}
+                                    <View style={styles.popularInfoContainer}>
+                                        <Text style={styles.popularNameCard} numberOfLines={2}>{item.name}</Text>
+                                        <Text style={styles.popularPriceCard}>{formatCurrency(item.price)}</Text>
+                                        <View style={styles.orderButtonWrap}>
+                                            <LinearGradient colors={['#F36D25', '#E5580F']} style={styles.orderGradientBtn}>
+                                                <Text style={styles.orderBtnText}>Order Now</Text>
+                                            </LinearGradient>
+                                        </View>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </Animated.View>
 
             </ScrollView>
         </SafeAreaView>
@@ -201,10 +239,72 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     locationText: {
-        color: '#A5A2A2',
-        fontSize: 13,
+        color: '#757575',
+        fontSize: 12,
         fontFamily: 'Inter_400Regular',
-        flex: 1,
+        lineHeight: 18,
+    },
+    locationTitle: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontFamily: 'Inter_600SemiBold',
+        marginBottom: 2,
+    },
+    locationIcon: {
+        width: 32, height: 32, borderRadius: 10,
+        backgroundColor: 'rgba(255, 106, 0, 0.1)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    statusBoardWrapper: {
+        paddingHorizontal: 20,
+        marginBottom: 24,
+        alignItems: 'center'
+    },
+    statusSign: {
+        width: '100%',
+        backgroundColor: '#4CAF50',
+        borderRadius: 20,
+        padding: 24,
+        alignItems: 'center',
+        borderWidth: 4,
+        borderColor: 'rgba(255,255,255,0.1)',
+        elevation: 12,
+        shadowColor: '#4CAF50',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 15,
+    },
+    statusSignClosed: {
+        backgroundColor: '#EF5350',
+        shadowColor: '#EF5350',
+    },
+    signChain: {
+        position: 'absolute',
+        top: -12,
+        width: '60%',
+        height: 12,
+        borderWidth: 2,
+        borderColor: '#353030',
+        borderBottomWidth: 0,
+        borderRadius: 10,
+    },
+    signContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 8,
+    },
+    statusLabelText: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        fontFamily: 'Poppins_700Bold',
+        letterSpacing: 2,
+    },
+    timeLabelText: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 15,
+        fontFamily: 'Inter_600SemiBold',
+        textAlign: 'center',
     },
     specialBanner: {
         marginHorizontal: 20,
@@ -302,40 +402,75 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Inter_600SemiBold',
     },
-    popularCard: {
-        width: width * 0.42,
-        backgroundColor: '#252121',
-        borderRadius: 16,
-        overflow: 'hidden',
+    popularCardContainer: {
+        width: 150,
+        marginTop: 15,
+        marginBottom: 10,
     },
-    popularImage: {
+    popularCardOuter: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 12,
+        paddingTop: 45, // space for drifting image
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        minHeight: 160,
+        justifyContent: 'space-between'
+    },
+    popularImageTop: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        position: 'absolute',
+        top: -40,
+        alignSelf: 'center',
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+    },
+    popularInfoContainer: {
+        alignItems: 'center',
         width: '100%',
-        height: 120,
+    },
+    popularNameCard: {
+        color: '#1A1A1A',
+        fontSize: 13,
+        fontFamily: 'Inter_700Bold',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    popularPriceCard: {
+        color: '#F36D25',
+        fontSize: 16,
+        fontFamily: 'Poppins_700Bold',
+        marginBottom: 10,
+    },
+    orderButtonWrap: {
+        width: '90%',
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#F36D25',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    orderGradientBtn: {
+        paddingVertical: 6,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    popularInfo: {
-        padding: 12,
-    },
-    vegBadge: {
-        marginBottom: 4,
-    },
-    vegDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 2,
-        borderWidth: 1.5,
-        borderColor: 'transparent',
-    },
-    popularName: {
+    orderBtnText: {
         color: '#FFFFFF',
-        fontSize: 14,
+        fontSize: 11,
         fontFamily: 'Inter_600SemiBold',
-        marginBottom: 4,
-    },
-    popularPrice: {
-        color: '#FF6A00',
-        fontSize: 14,
-        fontFamily: 'Inter_700Bold',
-    },
+    }
 });

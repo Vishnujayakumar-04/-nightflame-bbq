@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,16 +11,26 @@ export default function OtpVerificationScreen() {
     const router = useRouter();
     const [otp, setOtp] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { verifyOtp, phoneNumber } = useAuthStore();
+    const { verifyOtp, phoneNumber, error } = useAuthStore();
 
     const isValid = otp.length === 6;
+
+    useEffect(() => {
+        if (otp.length === 6 && !isLoading) {
+            handleVerify();
+        }
+    }, [otp]);
 
     const handleVerify = async () => {
         if (isValid) {
             setIsLoading(true);
             try {
-                await verifyOtp(otp);
-                router.replace('/(customer)');
+                const isNewUser = await verifyOtp(otp);
+                if (isNewUser) {
+                    router.replace('/(auth)/register');
+                } else {
+                    router.replace('/(customer)/home');
+                }
             } catch {
                 // Error handled in store
             } finally {
@@ -39,12 +49,12 @@ export default function OtpVerificationScreen() {
                 </Pressable>
 
                 <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.content}>
-                    <Text style={styles.title}>Verify OTP</Text>
+                    <Text style={styles.title}>Enter PIN</Text>
                     <Text style={styles.subtitle}>
-                        Enter the 6-digit code sent to{'\n'}+91 {phoneNumber || '**********'}
+                        Enter the 6-digit verification PIN for{'\n'}+91 {phoneNumber || '**********'}
                     </Text>
 
-                    {/* OTP Input */}
+                    {/* PIN Input */}
                     <View style={styles.otpContainer}>
                         <TextInput
                             value={otp}
@@ -58,10 +68,12 @@ export default function OtpVerificationScreen() {
                         />
                     </View>
 
-                    {/* Resend */}
-                    <TouchableOpacity style={styles.resendBtn}>
-                        <Text style={styles.resendText}>Resend OTP</Text>
-                    </TouchableOpacity>
+                    {/* Hint */}
+                    {error ? (
+                        <Text style={styles.errorText}>{error}</Text>
+                    ) : (
+                        <Text style={styles.hintText}>Demo PIN: 123456</Text>
+                    )}
                 </Animated.View>
 
                 {/* Bottom Button */}
@@ -108,11 +120,11 @@ const styles = StyleSheet.create({
         marginBottom: 20, borderWidth: 1, borderColor: '#353030',
     },
     otpInput: {
-        color: '#FFFFFF', fontSize: 32, fontFamily: 'Inter_700Bold',
-        letterSpacing: 16, textAlign: 'center', padding: 0,
+        color: '#FFFFFF', fontSize: 32, fontFamily: 'Inter_700Bold', marginLeft: 16,
+        textAlign: 'center', padding: 0,
     },
-    resendBtn: { alignItems: 'center', paddingVertical: 8 },
-    resendText: { color: '#FF6A00', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+    errorText: { color: '#EF5350', fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', marginBottom: 8 },
+    hintText: { color: '#5A4030', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
     bottomSection: {
         flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 24,
     },

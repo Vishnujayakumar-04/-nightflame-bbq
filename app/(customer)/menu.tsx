@@ -1,7 +1,12 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Image, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState, useMemo } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2; // 2 cols with padding and gap
 
 import { useCartStore } from '../../store/cartStore';
 import { useMenuStore } from '../../store/menuStore';
@@ -39,6 +44,12 @@ export default function MenuScreen() {
             result = result.filter(item => item.category === selectedCategory);
         }
 
+        // Apply veg filter (Assuming items that aren't strictly tagged as explicitly non-veg are veg, 
+        // or just mock it here by excluding 'Combo'/'Wings' for the demo as a fast solution if no strict boolean exists)
+        if (vegOnly) {
+            result = result.filter(item => item.category !== 'Wings' && item.category !== 'BBQ' && item.category !== 'Combo');
+        }
+
         return result;
     }, [menuItems, search, vegOnly, selectedCategory]);
 
@@ -56,49 +67,38 @@ export default function MenuScreen() {
         return map[cat] || '🍽️';
     };
 
-    const renderMenuItem = ({ item }: { item: MenuItem }) => (
-        <View style={styles.menuCard}>
-            {item.imageUrl ? (
-                <Image
-                    source={{ uri: item.imageUrl }}
-                    style={styles.menuImage}
-                    resizeMode="cover"
-                />
-            ) : (
-                <View style={[styles.menuImage, styles.placeholderImage]}>
-                    <Ionicons name="restaurant" size={28} color="#555" />
-                </View>
-            )}
-            <View style={styles.menuInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <View style={[styles.vegIndicator, { backgroundColor: item.category === 'Combo' ? '#FF6A00' : '#4CAF50' }]} />
-                    <Text style={styles.menuName} numberOfLines={1}>{item.name}</Text>
-                </View>
-                <Text style={styles.menuDescription} numberOfLines={2}>{item.description}</Text>
-                {item.isCombo && item.comboItems && (
-                    <Text style={styles.comboItems} numberOfLines={1}>
-                        {item.comboItems.join(' • ')}
-                    </Text>
+    const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
+        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={styles.menuCardContainer}>
+            <View style={styles.menuCardOuter}>
+                {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.menuImageTop} resizeMode="cover" />
+                ) : (
+                    <View style={[styles.menuImageTop, styles.placeholderImage]}>
+                        <Ionicons name="restaurant" size={32} color="#555" />
+                    </View>
                 )}
-                <View style={styles.menuBottom}>
-                    <Text style={styles.menuPrice}>{formatCurrency(item.price)}</Text>
+                <View style={styles.menuInfoContainer}>
+                    <Text style={styles.menuNameCard} numberOfLines={2}>
+                        {item.name}
+                    </Text>
+                    <Text style={styles.menuDescriptionCard} numberOfLines={3}>
+                        {item.description || 'Chicken Biryani is a highly aromatic, mouth-watering staple dish.'}
+                    </Text>
+                    <Text style={styles.menuPriceCard}>{formatCurrency(item.price)}</Text>
                     {item.available ? (
-                        <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={() => addItem(item)}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="add" size={16} color="#FFFFFF" />
-                            <Text style={styles.addText}>Add</Text>
+                        <TouchableOpacity style={styles.orderButtonWrap} onPress={() => addItem(item)} activeOpacity={0.8}>
+                            <LinearGradient colors={['#F36D25', '#E5580F']} style={styles.orderGradientBtn}>
+                                <Text style={styles.orderBtnText}>Order Now</Text>
+                            </LinearGradient>
                         </TouchableOpacity>
                     ) : (
-                        <View style={styles.soldOutBadge}>
-                            <Text style={styles.soldOutText}>Sold Out</Text>
+                        <View style={styles.soldOutPill}>
+                            <Text style={styles.soldOutPillText}>Sold Out</Text>
                         </View>
                     )}
                 </View>
             </View>
-        </View>
+        </Animated.View>
     );
 
     return (
@@ -166,10 +166,11 @@ export default function MenuScreen() {
                 <FlatList
                     data={filteredItems}
                     keyExtractor={(item) => item.itemId}
+                    numColumns={2}
                     renderItem={renderMenuItem}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                    contentContainerStyle={{ padding: 16, paddingTop: 60, paddingBottom: 120, gap: 16 }}
+                    columnWrapperStyle={{ gap: 16, justifyContent: 'space-between' }}
                     showsVerticalScrollIndicator={false}
-                    ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="restaurant-outline" size={48} color="#555" />
@@ -284,86 +285,103 @@ const styles = StyleSheet.create({
     categoryTextActive: {
         color: '#FFFFFF',
     },
-    menuCard: {
-        backgroundColor: '#252121',
-        borderRadius: 18,
-        flexDirection: 'row',
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#353030',
+    menuCardContainer: {
+        width: CARD_WIDTH,
+        marginBottom: 40,
+        marginTop: 40,
     },
-    menuImage: {
-        width: 110,
-        height: 130,
+    menuCardOuter: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 14,
+        paddingTop: 55, // space for drifting image
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        borderWidth: 1,
+        borderColor: '#EFEFEF',
+        minHeight: 200,
+        justifyContent: 'space-between'
+    },
+    menuImageTop: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        position: 'absolute',
+        top: -50,
+        alignSelf: 'center',
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
+        backgroundColor: '#F7F7F7',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
     },
     placeholderImage: {
-        backgroundColor: '#2A2A2A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#EAEAEA',
+    },
+    menuInfoContainer: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    menuNameCard: {
+        color: '#1A1A1A',
+        fontSize: 14,
+        fontFamily: 'Inter_700Bold',
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    menuDescriptionCard: {
+        color: '#757575',
+        fontSize: 10,
+        fontFamily: 'Inter_400Regular',
+        textAlign: 'center',
+        lineHeight: 14,
+        marginBottom: 10,
+    },
+    menuPriceCard: {
+        color: '#F36D25',
+        fontSize: 18,
+        fontFamily: 'Poppins_700Bold',
+        marginBottom: 12,
+    },
+    orderButtonWrap: {
+        width: '85%',
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#F36D25',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    orderGradientBtn: {
+        paddingVertical: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    menuInfo: {
-        flex: 1,
-        padding: 14,
-        justifyContent: 'space-between',
-    },
-    vegIndicator: {
-        width: 10,
-        height: 10,
-        borderRadius: 2,
-    },
-    menuName: {
+    orderBtnText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: 'Inter_700Bold',
-        flex: 1,
-    },
-    menuDescription: {
-        color: '#757575',
         fontSize: 12,
-        fontFamily: 'Inter_400Regular',
-        lineHeight: 17,
-        marginBottom: 4,
+        fontFamily: 'Inter_600SemiBold',
     },
-    comboItems: {
-        color: '#FF6A00',
-        fontSize: 11,
-        fontFamily: 'Inter_400Regular',
-        marginBottom: 4,
-    },
-    menuBottom: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    menuPrice: {
-        color: '#FF6A00',
-        fontSize: 18,
-        fontFamily: 'Inter_700Bold',
-    },
-    addButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FF6A00',
-        paddingHorizontal: 14,
+    soldOutPill: {
+        backgroundColor: '#F5F5F5',
         paddingVertical: 8,
-        borderRadius: 10,
-        gap: 4,
+        width: '85%',
+        borderRadius: 20,
+        alignItems: 'center',
     },
-    addText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontFamily: 'Inter_700Bold',
-    },
-    soldOutBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: 'rgba(239, 83, 80, 0.15)',
-    },
-    soldOutText: {
-        color: '#EF5350',
-        fontSize: 11,
+    soldOutPillText: {
+        color: '#9E9E9E',
+        fontSize: 12,
         fontFamily: 'Inter_600SemiBold',
     },
     loadingContainer: {

@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Order, OrderStatus } from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -34,7 +35,7 @@ export default function MyOrdersScreen() {
     const displayOrders = activeTab === 'active' ? activeOrders : pastOrders;
 
     const renderEmptyState = () => (
-        <View style={styles.emptyContainer}>
+        <Animated.View entering={FadeInDown.duration(600)} style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={60} color="#757575" />
             <Text style={styles.emptyTitle}>
                 {activeTab === 'active' ? 'No active orders' : 'No past orders'}
@@ -52,44 +53,46 @@ export default function MyOrdersScreen() {
                     <Text style={styles.orderNowText}>Order Now</Text>
                 </LinearGradient>
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 
-    const renderOrderItem = ({ item }: { item: Order }) => {
+    const renderOrderItem = ({ item, index }: { item: Order, index: number }) => {
         const itemsSummary = item.items.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ');
 
         return (
-            <TouchableOpacity
-                onPress={() => router.push(`/(customer)/order-tracking/${item.orderId}`)}
-                style={styles.orderCard}
-                activeOpacity={0.85}
-            >
-                <View style={styles.orderHeader}>
-                    <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
-                    <StatusBadge status={item.status} />
-                </View>
-
-                <Text style={styles.orderItems} numberOfLines={2}>{itemsSummary}</Text>
-
-                <View style={styles.orderFooter}>
-                    <View style={styles.orderMeta}>
-                        <Ionicons name="time-outline" size={14} color="#757575" />
-                        <Text style={styles.orderMetaText}>{formatTime(item.pickupTime)}</Text>
-                        <Text style={styles.orderMetaText}>{formatDate(item.timestamp)}</Text>
+            <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
+                <TouchableOpacity
+                    onPress={() => router.push(`/(customer)/order-tracking/${item.orderId}`)}
+                    style={styles.orderCard}
+                    activeOpacity={0.85}
+                >
+                    <View style={styles.orderHeader}>
+                        <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
+                        <StatusBadge status={item.status} />
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.orderTotal}>{formatCurrency(item.totalAmount)}</Text>
-                        {item.paymentStatus && (
-                            <Text style={[
-                                styles.paymentBadge,
-                                { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }
-                            ]}>
-                                {item.paymentStatus}
-                            </Text>
-                        )}
+
+                    <Text style={styles.orderItems} numberOfLines={2}>{itemsSummary}</Text>
+
+                    <View style={styles.orderFooter}>
+                        <View style={styles.orderMeta}>
+                            <Ionicons name="time-outline" size={14} color="#757575" />
+                            <Text style={styles.orderMetaText}>{formatTime(item.pickupTime)}</Text>
+                            <Text style={styles.orderMetaText}>{formatDate(item.timestamp)}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.orderTotal}>{formatCurrency(item.totalAmount)}</Text>
+                            {item.paymentStatus && (
+                                <Text style={[
+                                    styles.paymentBadge,
+                                    { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }
+                                ]}>
+                                    {item.paymentStatus}
+                                </Text>
+                            )}
+                        </View>
                     </View>
-                </View>
-            </TouchableOpacity>
+                </TouchableOpacity>
+            </Animated.View>
         );
     };
 

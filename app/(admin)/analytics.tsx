@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useOrderStore } from '../../store/orderStore';
 
@@ -115,7 +116,7 @@ export default function AnalyticsScreen() {
                 </View>
 
                 {/* Stat Cards Grid */}
-                <View style={styles.statsGrid}>
+                <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.statsGrid}>
                     <View style={[styles.statCard, { borderColor: '#FF6A00' }]}>
                         <Ionicons name="cash-outline" size={22} color="#FF6A00" />
                         <Text style={styles.statValue}>{formatCurrency(stats.totalRevenue)}</Text>
@@ -136,7 +137,7 @@ export default function AnalyticsScreen() {
                         <Text style={styles.statValue}>{stats.customers}</Text>
                         <Text style={styles.statLabel}>Customers</Text>
                     </View>
-                </View>
+                </Animated.View>
 
                 {/* Weekly Revenue Chart */}
                 {period === 'week' && (
@@ -159,7 +160,7 @@ export default function AnalyticsScreen() {
 
                 {/* Orders per Day Bar Chart */}
                 {period === 'week' && (
-                    <View style={styles.chartCard}>
+                    <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.chartCard}>
                         <Text style={styles.chartTitle}>Orders per Day</Text>
                         <View style={styles.barChart}>
                             {stats.dailyOrders.map((count, i) => {
@@ -172,11 +173,11 @@ export default function AnalyticsScreen() {
                                 );
                             })}
                         </View>
-                    </View>
+                    </Animated.View>
                 )}
 
                 {/* Revenue by Category */}
-                <View style={styles.chartCard}>
+                <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.chartCard}>
                     <Text style={styles.chartTitle}>Revenue by Category</Text>
                     <View style={styles.categoryList}>
                         {Object.entries(stats.categoryRevenue).sort((a, b) => b[1] - a[1]).map(([cat, rev]) => (
@@ -192,10 +193,10 @@ export default function AnalyticsScreen() {
                             <Text style={styles.noDataText}>No data yet</Text>
                         )}
                     </View>
-                </View>
+                </Animated.View>
 
                 {/* Payment Split */}
-                <View style={styles.chartCard}>
+                <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.chartCard}>
                     <Text style={styles.chartTitle}>Payment Split</Text>
                     <View style={styles.paymentRow}>
                         <Text style={styles.paymentLabel}>UPI / Online</Text>
@@ -215,10 +216,10 @@ export default function AnalyticsScreen() {
                     <View style={styles.paymentBar}>
                         <View style={[styles.paymentFill, { width: `${(stats.cashOrders / totalPayments) * 100}%`, backgroundColor: '#4CAF50' }]} />
                     </View>
-                </View>
+                </Animated.View>
 
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 

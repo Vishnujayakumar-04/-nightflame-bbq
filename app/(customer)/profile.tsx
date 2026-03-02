@@ -8,7 +8,7 @@ import { useCartStore } from '../../store/cartStore';
 export default function ProfileScreen() {
     const router = useRouter();
     const clearCart = useCartStore(state => state.clearCart);
-    const { user } = useAuthStore();
+    const { user, signOut } = useAuthStore();
 
     const userName = user?.name || 'Customer';
     const userPhone = user?.phoneNumber || '+91 9876543210';
@@ -18,7 +18,8 @@ export default function ProfileScreen() {
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Logout', style: 'destructive',
-                onPress: () => {
+                onPress: async () => {
+                    await signOut();
                     clearCart();
                     router.replace('/(auth)/welcome');
                 }

@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppStrings } from '../../constants/Strings';
 import { useCartStore } from '../../store/cartStore';
@@ -83,7 +84,7 @@ export default function CartScreen() {
     if (items.length === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.emptyContainer}>
+                <Animated.View entering={FadeInDown.duration(600)} style={styles.emptyContainer}>
                     <View style={styles.emptyIconBg}>
                         <Ionicons name="cart-outline" size={60} color="#757575" />
                     </View>
@@ -102,7 +103,7 @@ export default function CartScreen() {
                             <Text style={styles.browseText}>Browse Menu</Text>
                         </LinearGradient>
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
             </SafeAreaView>
         );
     }
@@ -120,10 +121,10 @@ export default function CartScreen() {
 
             {/* Cart Items */}
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-                {items.map((cartItem) => {
+                {items.map((cartItem, index) => {
                     const item = cartItem.menuItem;
                     return (
-                        <View key={item.itemId} style={styles.cartItem}>
+                        <Animated.View key={item.itemId} entering={FadeInDown.delay(index * 100).duration(400)} style={styles.cartItem}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.cartItemName}>{item.name}</Text>
                                 {item.isCombo && item.comboItems && (
@@ -154,7 +155,7 @@ export default function CartScreen() {
                             <Text style={styles.cartItemTotal}>
                                 {formatCurrency(item.price * cartItem.quantity)}
                             </Text>
-                        </View>
+                        </Animated.View>
                     );
                 })}
             </ScrollView>

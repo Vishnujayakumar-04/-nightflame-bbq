@@ -40,7 +40,7 @@ export default function CustomerLoginScreen() {
 
                 <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.content}>
                     <Text style={styles.title}>Enter your number</Text>
-                    <Text style={styles.subtitle}>We'll send you a verification code</Text>
+                    <Text style={styles.subtitle}>We'll use a verification PIN for this session</Text>
 
                     {/* Phone Input */}
                     <View style={styles.phoneRow}>

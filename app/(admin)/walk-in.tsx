@@ -1,8 +1,9 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { MenuItem } from '../../types/models';
@@ -96,7 +97,7 @@ export default function WalkInOrderScreen() {
 
     // Step 1: Select Items
     const renderStep1 = () => (
-        <>
+        <Animated.View entering={FadeInDown.duration(400)} style={{ flex: 1 }}>
             {/* Search */}
             <View style={styles.searchContainer}>
                 <Ionicons name="search-outline" size={18} color="#757575" />
@@ -148,12 +149,12 @@ export default function WalkInOrderScreen() {
                     );
                 }}
             />
-        </>
+        </Animated.View>
     );
 
     // Step 2: Review & Place
     const renderStep2 = () => (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+        <Animated.ScrollView entering={FadeInDown.duration(400)} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
             {/* Customer Name */}
             <Text style={styles.sectionLabel}>Customer Name (Optional)</Text>
             <View style={styles.nameInput}>
@@ -194,7 +195,7 @@ export default function WalkInOrderScreen() {
                     <Text style={styles.totalValue}>{formatCurrency(totalAmount)}</Text>
                 </View>
             </View>
-        </ScrollView>
+        </Animated.ScrollView>
     );
 
     return (

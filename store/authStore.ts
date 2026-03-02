@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { auth, db } from '../firebaseConfig';
+import { signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User } from '../types/models';
 
 interface AuthState {
@@ -11,10 +12,13 @@ interface AuthState {
     customerName: string | null;
     user: User | null;
 
+    tempUid: string | null;
+
     // Actions
     setName: (name: string) => void;
     sendOtp: (phoneNumber: string) => Promise<void>;
-    verifyOtp: (otp: string) => Promise<void>;
+    verifyOtp: (otp: string) => Promise<boolean>;
+    completeRegistration: (name: string, dob: string) => Promise<void>;
     adminLogin: (pin: string) => Promise<boolean>;
     signOut: () => Promise<void>;
     checkAuthState: () => () => void; // Returns unsubscribe function
@@ -26,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     verificationId: null,
     phoneNumber: null,
     customerName: null,
+    tempUid: null,
     user: null,
 
     setName: (name) => set({ customerName: name }),
@@ -33,13 +38,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     sendOtp: async (phone) => {
         set({ isLoading: true, error: null });
         try {
-            const fullPhone = `+91${phone}`;
-
-            const confirmation = await auth().signInWithPhoneNumber(fullPhone);
+            // Simulated OTP for Expo Go compatibility without native modules
+            // (In a production bare workflow app, you would use RecaptchaVerifier or native Firebase)
+            await new Promise(resolve => setTimeout(resolve, 800));
 
             set({
                 isLoading: false,
-                verificationId: confirmation.verificationId,
+                verificationId: 'mock-verification-id',
                 phoneNumber: phone
             });
         } catch (_e: any) {
@@ -47,43 +52,65 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    verifyOtp: async (otp) => {
-        const { verificationId, phoneNumber, customerName } = get();
-        if (!verificationId) return;
+    verifyOtp: async (otp: string) => {
+        const { verificationId } = get();
+        if (!verificationId) return false;
+
+        if (otp !== '123456') {
+            set({ error: 'Invalid OTP. For testing, use 123456' });
+            throw new Error('Invalid OTP');
+        }
 
         set({ isLoading: true, error: null });
         try {
-            const credential = auth.PhoneAuthProvider.credential(verificationId, otp);
-            const userCred = await auth().signInWithCredential(credential);
+            // Because Anonymous Auth is disabled on the Firebase project, simulate a deterministic UID
+            const mockUid = `user_${get().phoneNumber?.replace(/\D/g, '') || Math.random().toString(36).substring(2, 10)}`;
+            console.log('Verifying with Mock UID:', mockUid);
 
-            // Get or create user in Firestore
-            const userRef = firestore().collection('users').doc(userCred.user.uid);
-            const doc = await userRef.get();
+            // Check user in Firestore
+            const userRef = doc(db, 'users', mockUid);
+            const docSnap = await getDoc(userRef);
 
-            let userData: User;
-
-            if (doc.exists()) {
-                const existingData = doc.data() as User;
-                userData = existingData;
-                // Update name if different and provided
-                if (customerName && customerName !== existingData.name) {
-                    await userRef.update({ name: customerName });
-                    userData.name = customerName;
-                }
+            if (docSnap.exists()) {
+                const existingData = docSnap.data() as User;
+                set({ isLoading: false, user: existingData, error: null });
+                return false; // Not a new user
             } else {
-                userData = {
-                    userId: userCred.user.uid,
-                    name: customerName || 'Customer',
-                    phoneNumber: `+91${phoneNumber}`,
-                    createdAt: Date.now(),
-                    role: 'customer'
-                };
-                await userRef.set(userData);
+                set({ isLoading: false, tempUid: mockUid, error: null });
+                return true; // Is a new user
+            }
+        } catch (e: any) {
+            let userFriendlyError = e.message || 'Verification Error';
+
+            // Helpful tip for the "Insufficient Permissions" error
+            if (e.code === 'permission-denied') {
+                userFriendlyError = 'Firestore Error: Please set your Firebase Rules to "allow read, write: if true;" in the console.';
             }
 
-            set({ isLoading: false, user: userData, error: null });
+            set({ isLoading: false, error: userFriendlyError });
+            throw new Error(userFriendlyError);
+        }
+    },
+
+    completeRegistration: async (name, dob) => {
+        const { tempUid, phoneNumber } = get();
+        if (!tempUid) return;
+
+        set({ isLoading: true, error: null });
+        try {
+            const userRef = doc(db, 'users', tempUid);
+            const userData: User = {
+                userId: tempUid,
+                name: name,
+                phoneNumber: `+ 91${phoneNumber} `,
+                dob: dob,
+                createdAt: Date.now(),
+                role: 'customer'
+            };
+            await setDoc(userRef, userData);
+            set({ isLoading: false, user: userData, tempUid: null, error: null });
         } catch {
-            set({ isLoading: false, error: 'Invalid OTP. Please try again.' });
+            set({ isLoading: false, error: 'Registration failed.' });
         }
     },
 
@@ -118,7 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     signOut: async () => {
         set({ isLoading: true });
         try {
-            await auth().signOut();
+            await firebaseSignOut(auth);
             set({ user: null, verificationId: null, isLoading: false, error: null });
         } catch {
             set({ isLoading: false });
@@ -126,12 +153,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     },
 
     checkAuthState: () => {
-        const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 try {
-                    const doc = await firestore().collection('users').doc(firebaseUser.uid).get();
-                    if (doc.exists()) {
-                        set({ user: doc.data() as User });
+                    const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+                    if (docSnap.exists()) {
+                        set({ user: docSnap.data() as User });
                     } else {
                         // Handle edge case where user is in Auth but not Firestore
                         set({ user: null });

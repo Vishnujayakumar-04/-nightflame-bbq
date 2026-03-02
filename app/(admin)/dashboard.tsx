@@ -3,11 +3,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
 import { useMenuStore } from '../../store/menuStore';
+import { useShopStore } from '../../store/shopStore';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { OrderStatus } from '../../types/models';
+import { OrderStatus, ShopStatus } from '../../types/models';
+import { useState } from 'react';
+import { TextInput, Switch } from 'react-native';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
@@ -20,14 +25,35 @@ const getRelativeTime = (timestamp: number) => {
 
 export default function AdminDashboardScreen() {
     const router = useRouter();
-    const { orders, subscribeToOrders } = useOrderStore();
+    const { orders, subscribeToOrders, updateOrderStatus } = useOrderStore();
+    const { user, signOut } = useAuthStore();
     const { subscribeToMenu } = useMenuStore();
+    const { status, subscribeToStatus, updateStatus } = useShopStore();
 
     useEffect(() => {
         const unsubOrders = subscribeToOrders();
         const unsubMenu = subscribeToMenu();
-        return () => { unsubOrders(); unsubMenu(); };
+        const unsubStatus = subscribeToStatus();
+        return () => {
+            unsubOrders();
+            unsubMenu();
+            unsubStatus();
+        };
     }, []);
+
+    const handleStatusUpdate = (orderId: string) => {
+        Alert.alert(
+            'Update Status',
+            'Change order stage:',
+            [
+                { text: 'Pending', onPress: () => updateOrderStatus(orderId, OrderStatus.pending) },
+                { text: 'Preparing', onPress: () => updateOrderStatus(orderId, OrderStatus.preparing) },
+                { text: 'Ready', onPress: () => updateOrderStatus(orderId, OrderStatus.ready) },
+                { text: 'Completed', onPress: () => updateOrderStatus(orderId, OrderStatus.completed) },
+                { text: 'Cancel', style: 'cancel' }
+            ]
+        );
+    };
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -46,7 +72,12 @@ export default function AdminDashboardScreen() {
     const handleLogout = () => {
         Alert.alert('Logout', 'Sign out of admin?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Logout', style: 'destructive', onPress: () => router.replace('/(auth)/welcome') }
+            {
+                text: 'Logout', style: 'destructive', onPress: async () => {
+                    await signOut();
+                    router.replace('/(auth)/welcome');
+                }
+            }
         ]);
     };
 
@@ -72,7 +103,7 @@ export default function AdminDashboardScreen() {
                 </View>
 
                 {/* Revenue & Stats Row */}
-                <View style={styles.statsContainer}>
+                <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.statsContainer}>
                     <View style={styles.revenueCard}>
                         <Text style={styles.revenueLabel}>₹</Text>
                         <Text style={styles.revenueAmount}>{formatCurrency(todayRevenue)}</Text>
@@ -88,11 +119,11 @@ export default function AdminDashboardScreen() {
                             <Text style={styles.statBoxLabel}>Active Now</Text>
                         </View>
                     </View>
-                </View>
+                </Animated.View>
 
                 {/* LIVE QUEUE */}
                 <Text style={styles.sectionLabel}>LIVE QUEUE</Text>
-                <View style={styles.queueRow}>
+                <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.queueRow}>
                     {[
                         { label: 'Pending', count: pendingCount, color: '#FFD700' },
                         { label: 'Confirmed', count: confirmedCount, color: '#4CAF50' },
@@ -104,10 +135,10 @@ export default function AdminDashboardScreen() {
                             <Text style={styles.queueLabel}>{item.label}</Text>
                         </View>
                     ))}
-                </View>
+                </Animated.View>
 
                 {/* Action Buttons */}
-                <View style={styles.actionRow}>
+                <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.actionRow}>
                     <TouchableOpacity
                         style={styles.walkInBtn}
                         onPress={() => router.push('/(admin)/walk-in')}
@@ -122,7 +153,64 @@ export default function AdminDashboardScreen() {
                         <Ionicons name="trending-up" size={18} color="#FFFFFF" />
                         <Text style={styles.analyticsText}>Analytics</Text>
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
+
+                {/* SHOP CONTROL CENTER */}
+                <Text style={styles.sectionLabel}>SHOP CONTROL CENTER</Text>
+                <Animated.View entering={FadeInDown.delay(350).duration(600)} style={styles.controlCard}>
+                    <View style={styles.controlRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.controlTitle}>Live Shop Status</Text>
+                            <Text style={styles.controlSub}>{status?.isOpen ? 'Shop is currently accepting orders' : 'Shop is hidden from orders'}</Text>
+                        </View>
+                        <Switch
+                            value={status?.isOpen}
+                            onValueChange={(val) => updateStatus({ isOpen: val })}
+                            trackColor={{ false: '#3A3A3A', true: 'rgba(76, 175, 80, 0.4)' }}
+                            thumbColor={status?.isOpen ? '#4CAF50' : '#757575'}
+                        />
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.timeInputsRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.inputLabel}>Open Time</Text>
+                            <TextInput
+                                style={styles.timeInput}
+                                value={status?.openTime}
+                                onChangeText={(t) => updateStatus({ openTime: t })}
+                                placeholder="06:00 PM"
+                                placeholderTextColor="#555"
+                            />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.inputLabel}>Close Time</Text>
+                            <TextInput
+                                style={styles.timeInput}
+                                value={status?.closeTime}
+                                onChangeText={(t) => updateStatus({ closeTime: t })}
+                                placeholder="11:00 PM"
+                                placeholderTextColor="#555"
+                            />
+                        </View>
+                    </View>
+
+                    {!status?.isOpen && (
+                        <View style={{ marginTop: 16 }}>
+                            <Text style={styles.inputLabel}>Closing Message (Visible to customer)</Text>
+                            <TextInput
+                                style={styles.messageInput}
+                                value={status?.message}
+                                onChangeText={(m) => updateStatus({ message: m })}
+                                placeholder="come on tomm to have have spicy chicken"
+                                placeholderTextColor="#555"
+                                multiline
+                            />
+                        </View>
+                    )}
+                </Animated.View>
+
 
                 {/* Recent Orders */}
                 <View style={styles.recentHeader}>
@@ -132,39 +220,45 @@ export default function AdminDashboardScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {recentOrders.map(order => (
-                    <TouchableOpacity key={order.orderId} style={styles.orderCard} activeOpacity={0.85}>
-                        <View style={styles.orderCardHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Text style={styles.orderIdText}>{formatOrderIdShort(order.orderId)}</Text>
-                                {!order.userId && (
-                                    <View style={styles.walkInTag}>
-                                        <Text style={styles.walkInTagText}>Walk-in</Text>
-                                    </View>
-                                )}
+                {recentOrders.map((order, index) => (
+                    <Animated.View key={order.orderId} entering={FadeInDown.delay(400 + index * 100).duration(400)}>
+                        <TouchableOpacity
+                            style={styles.orderCard}
+                            activeOpacity={0.85}
+                            onPress={() => handleStatusUpdate(order.orderId)}
+                        >
+                            <View style={styles.orderCardHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={styles.orderIdText}>{formatOrderIdShort(order.orderId)}</Text>
+                                    {!order.userId && (
+                                        <View style={styles.walkInTag}>
+                                            <Text style={styles.walkInTagText}>Walk-in</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <StatusBadge status={order.status} />
+                                    <Ionicons name="chevron-forward" size={16} color="#757575" />
+                                </View>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <StatusBadge status={order.status} />
-                                <Ionicons name="chevron-forward" size={16} color="#757575" />
+                            <Text style={styles.orderCustomer}>{order.customerName || 'Customer'}</Text>
+                            <Text style={styles.orderItemsText} numberOfLines={1}>
+                                {order.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
+                            </Text>
+                            <View style={styles.orderCardFooter}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Ionicons name="time-outline" size={12} color="#757575" />
+                                    <Text style={styles.orderTimeText}>{getRelativeTime(order.timestamp)}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={[styles.paymentTag, { color: order.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }]}>
+                                        {order.paymentMethod} · {order.paymentStatus}
+                                    </Text>
+                                    <Text style={styles.orderAmount}>{formatCurrency(order.totalAmount)}</Text>
+                                </View>
                             </View>
-                        </View>
-                        <Text style={styles.orderCustomer}>{order.customerName || 'Customer'}</Text>
-                        <Text style={styles.orderItemsText} numberOfLines={1}>
-                            {order.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
-                        </Text>
-                        <View style={styles.orderCardFooter}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <Ionicons name="time-outline" size={12} color="#757575" />
-                                <Text style={styles.orderTimeText}>{getRelativeTime(order.timestamp)}</Text>
-                            </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Text style={[styles.paymentTag, { color: order.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }]}>
-                                    {order.paymentMethod} · {order.paymentStatus}
-                                </Text>
-                                <Text style={styles.orderAmount}>{formatCurrency(order.totalAmount)}</Text>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    </Animated.View>
                 ))}
 
             </ScrollView>
@@ -226,6 +320,41 @@ const styles = StyleSheet.create({
         backgroundColor: '#252121', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#353030',
     },
     analyticsText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    controlCard: {
+        backgroundColor: '#252121',
+        marginHorizontal: 20,
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#353030',
+        marginBottom: 24,
+    },
+    controlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    controlTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+    controlSub: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    divider: { height: 1, backgroundColor: '#353030', marginVertical: 16 },
+    timeInputsRow: { flexDirection: 'row', gap: 12 },
+    inputLabel: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
+    timeInput: {
+        backgroundColor: '#1A1818',
+        borderRadius: 12,
+        padding: 12,
+        color: '#FFFFFF',
+        fontFamily: 'Inter_600SemiBold',
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    messageInput: {
+        backgroundColor: '#1A1818',
+        borderRadius: 12,
+        padding: 14,
+        color: '#FFFFFF',
+        fontFamily: 'Inter_400Regular',
+        borderWidth: 1,
+        borderColor: '#353030',
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
     recentHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, marginBottom: 12,

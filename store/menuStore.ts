@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import firestore from '@react-native-firebase/firestore';
+import { db } from '../firebaseConfig';
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { MenuItem } from '../types/models';
 
 interface MenuState {
@@ -23,29 +24,28 @@ export const useMenuStore = create<MenuState>((set) => ({
         set({ isLoading: true });
 
         // Listen to real-time updates from Firestore
-        const unsubscribe = firestore()
-            .collection('menuItems')
-            .onSnapshot(
-                (snapshot) => {
-                    const items: MenuItem[] = snapshot.docs.map(doc => ({
-                        ...(doc.data() as Omit<MenuItem, 'itemId'>),
-                        itemId: doc.id
-                    }));
+        const unsubscribe = onSnapshot(
+            collection(db, 'menuItems'),
+            (snapshot) => {
+                const items: MenuItem[] = snapshot.docs.map(doc => ({
+                    ...(doc.data() as Omit<MenuItem, 'itemId'>),
+                    itemId: doc.id
+                }));
 
-                    set({ menuItems: items, isLoading: false, error: null });
-                },
-                (error) => {
-                    set({ error: error.message, isLoading: false });
-                }
-            );
+                set({ menuItems: items, isLoading: false, error: null });
+            },
+            (error) => {
+                set({ error: error.message, isLoading: false });
+            }
+        );
 
         return unsubscribe;
     },
 
     addMenuItem: async (item) => {
         try {
-            const newItemRef = firestore().collection('menuItems').doc();
-            await newItemRef.set({
+            const newItemRef = doc(collection(db, 'menuItems'));
+            await setDoc(newItemRef, {
                 ...item,
                 createdAt: Date.now()
             });
@@ -56,7 +56,7 @@ export const useMenuStore = create<MenuState>((set) => ({
 
     updateMenuItem: async (itemId, updates) => {
         try {
-            await firestore().collection('menuItems').doc(itemId).update(updates);
+            await updateDoc(doc(db, 'menuItems', itemId), updates);
         } catch (e: any) {
             console.error("Failed to update menu item", e);
         }
@@ -64,7 +64,7 @@ export const useMenuStore = create<MenuState>((set) => ({
 
     deleteMenuItem: async (itemId) => {
         try {
-            await firestore().collection('menuItems').doc(itemId).delete();
+            await deleteDoc(doc(db, 'menuItems', itemId));
         } catch (e: any) {
             console.error("Failed to delete menu item", e);
         }

@@ -3,13 +3,21 @@ export interface MenuItem {
     name: string;
     description: string;
     price: number;
-    imageUrl: string;
+    imageUrl?: string;
     available: boolean;
     category: string;
     createdAt: number;
     preparationTime?: number;
     isCombo?: boolean;
     comboItems?: string[]; // Array of itemIds or descriptors if it's a combo
+}
+
+export interface ShopStatus {
+    isOpen: boolean;
+    openTime: string; // e.g. "06:00 PM"
+    closeTime: string; // e.g. "11:00 PM"
+    message?: string; // Custom message for closed status
+    lastUpdated: number;
 }
 
 export interface CartItem {
@@ -44,6 +52,7 @@ export interface User {
     userId: string;
     name: string;
     phoneNumber: string;
+    dob?: string;
     createdAt: number;
     role: 'customer' | 'admin';
 }
