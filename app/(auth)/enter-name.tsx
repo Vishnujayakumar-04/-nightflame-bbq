@@ -20,7 +20,7 @@ export default function EnterNameScreen() {
     const handleNext = () => {
         if (isValid) {
             storeSetName(name.trim());
-            router.push('/(auth)/login');
+            router.push('/(auth)/enter-address');
         }
     };
 
@@ -80,31 +80,31 @@ export default function EnterNameScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0D0D0D' },
+    container: { flex: 1, backgroundColor: '#0A0A0A' },
     safeArea: { flex: 1 },
     backButton: {
         flexDirection: 'row', alignItems: 'center',
         paddingHorizontal: 24, paddingVertical: 12, gap: 6,
     },
     backText: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular' },
-    content: { paddingHorizontal: 24, marginTop: 24 },
-    title: { color: '#FFFFFF', fontSize: 28, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
-    subtitle: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 36 },
+    content: { paddingHorizontal: 24, marginTop: 40 },
+    title: { color: '#FFFFFF', fontSize: 32, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
+    subtitle: { color: '#A5A2A2', fontSize: 16, fontFamily: 'Inter_400Regular', marginBottom: 48 },
     inputContainer: {
         flexDirection: 'row', alignItems: 'center', gap: 12,
-        backgroundColor: '#1E1E1E', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 18,
-        borderWidth: 1, borderColor: '#353030',
+        backgroundColor: '#1A1817', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 18,
+        borderWidth: 1, borderColor: '#352520',
     },
     textInput: {
-        flex: 1, color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_600SemiBold', padding: 0,
+        flex: 1, color: '#FFFFFF', fontSize: 18, fontFamily: 'Poppins_600SemiBold', padding: 0,
     },
     bottomSection: {
-        flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 24,
+        flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 40,
     },
-    nextButton: { borderRadius: 14, overflow: 'hidden' },
+    nextButton: { borderRadius: 30, overflow: 'hidden' },
     nextGradient: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        paddingVertical: 18, borderRadius: 14,
+        paddingVertical: 18, borderRadius: 30,
     },
-    nextText: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_700Bold' },
+    nextText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Poppins_700Bold', letterSpacing: 1 },
 });

@@ -5,13 +5,14 @@ import { useState, useMemo, useEffect } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useOrderStore } from '../../store/orderStore';
+import { PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const { width } = Dimensions.get('window');
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 export default function AnalyticsScreen() {
     const { orders, subscribeToOrders } = useOrderStore();
-    const [period, setPeriod] = useState<'week' | 'year'>('week');
+    const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
 
     useEffect(() => {
         const unsub = subscribeToOrders();
@@ -26,14 +27,15 @@ export default function AnalyticsScreen() {
         startOfWeek.setDate(now.getDate() - now.getDay());
         startOfWeek.setHours(0, 0, 0, 0);
 
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        const periodStart = period === 'week' ? startOfWeek.getTime() : startOfYear.getTime();
+        const periodStart = period === 'week' ? startOfWeek.getTime() : period === 'month' ? startOfMonth.getTime() : startOfYear.getTime();
         const periodOrders = orders.filter(o => o.timestamp >= periodStart);
-        const paidOrders = periodOrders.filter(o => o.paymentStatus === 'Paid');
+        const paidOrders = periodOrders.filter(o => o.paymentStatus === PaymentStatus.PAID);
 
         const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-        const totalOrders = periodOrders.length;
+        const totalOrders = paidOrders.length;
         const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
         // Unique customers
@@ -60,8 +62,11 @@ export default function AnalyticsScreen() {
         }
 
         // Payment split
-        const upiOrders = paidOrders.filter(o => o.paymentMethod === 'UPI');
-        const cashOrders = paidOrders.filter(o => o.paymentMethod === 'Cash');
+        const upiOrdersArr = paidOrders.filter(o => o.paymentMethod === PaymentMethod.UPI);
+        const cashOrdersArr = paidOrders.filter(o => o.paymentMethod === PaymentMethod.CASH);
+
+        const upiRevenue = upiOrdersArr.reduce((sum, o) => sum + o.totalAmount, 0);
+        const cashRevenue = cashOrdersArr.reduce((sum, o) => sum + o.totalAmount, 0);
 
         return {
             totalRevenue,
@@ -71,8 +76,10 @@ export default function AnalyticsScreen() {
             categoryRevenue,
             dailyRevenue,
             dailyOrders,
-            upiOrders: upiOrders.length,
-            cashOrders: cashOrders.length,
+            upiOrders: upiOrdersArr.length,
+            cashOrders: cashOrdersArr.length,
+            upiRevenue,
+            cashRevenue,
         };
     }, [orders, period]);
 
@@ -103,14 +110,18 @@ export default function AnalyticsScreen() {
                         style={[styles.periodBtn, period === 'week' && styles.periodBtnActive]}
                         onPress={() => setPeriod('week')}
                     >
-                        <Ionicons name="calendar" size={14} color={period === 'week' ? '#FFFFFF' : '#757575'} />
                         <Text style={[styles.periodText, period === 'week' && styles.periodTextActive]}>This Week</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.periodBtn, period === 'month' && styles.periodBtnActive]}
+                        onPress={() => setPeriod('month')}
+                    >
+                        <Text style={[styles.periodText, period === 'month' && styles.periodTextActive]}>This Month</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.periodBtn, period === 'year' && styles.periodBtnActive]}
                         onPress={() => setPeriod('year')}
                     >
-                        <Ionicons name="calendar-outline" size={14} color={period === 'year' ? '#FFFFFF' : '#757575'} />
                         <Text style={[styles.periodText, period === 'year' && styles.periodTextActive]}>This Year</Text>
                     </TouchableOpacity>
                 </View>
@@ -199,18 +210,25 @@ export default function AnalyticsScreen() {
                 <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.chartCard}>
                     <Text style={styles.chartTitle}>Payment Split</Text>
                     <View style={styles.paymentRow}>
-                        <Text style={styles.paymentLabel}>UPI / Online</Text>
+                        <View>
+                            <Text style={styles.paymentLabel}>UPI / Online</Text>
+                            <Text style={styles.paymentSubLabel}>{stats.upiOrders} orders</Text>
+                        </View>
                         <Text style={styles.paymentValue}>
-                            {stats.upiOrders} orders ({Math.round((stats.upiOrders / totalPayments) * 100)}%)
+                            {formatCurrency(stats.upiRevenue)} ({Math.round((stats.upiOrders / totalPayments) * 100)}%)
                         </Text>
                     </View>
                     <View style={styles.paymentBar}>
                         <View style={[styles.paymentFill, { width: `${(stats.upiOrders / totalPayments) * 100}%`, backgroundColor: '#2196F3' }]} />
                     </View>
-                    <View style={[styles.paymentRow, { marginTop: 16 }]}>
-                        <Text style={styles.paymentLabel}>Cash</Text>
+
+                    <View style={[styles.paymentRow, { marginTop: 20 }]}>
+                        <View>
+                            <Text style={styles.paymentLabel}>Cash</Text>
+                            <Text style={styles.paymentSubLabel}>{stats.cashOrders} orders</Text>
+                        </View>
                         <Text style={styles.paymentValue}>
-                            {stats.cashOrders} orders ({Math.round((stats.cashOrders / totalPayments) * 100)}%)
+                            {formatCurrency(stats.cashRevenue)} ({Math.round((stats.cashOrders / totalPayments) * 100)}%)
                         </Text>
                     </View>
                     <View style={styles.paymentBar}>
@@ -225,36 +243,36 @@ export default function AnalyticsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#1A1818' },
-    header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6 },
-    title: { color: '#FFFFFF', fontSize: 26, fontFamily: 'Poppins_700Bold', fontStyle: 'italic' },
-    subtitle: { color: '#757575', fontSize: 14, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+    title: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Poppins_700Bold', fontStyle: 'italic' },
+    subtitle: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
     periodToggle: {
-        flexDirection: 'row', marginHorizontal: 20, marginTop: 16, marginBottom: 20,
-        backgroundColor: '#252121', borderRadius: 14, padding: 4,
+        flexDirection: 'row', marginHorizontal: 16, marginTop: 12, marginBottom: 14,
+        backgroundColor: '#252121', borderRadius: 12, padding: 3,
     },
     periodBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-        paddingVertical: 12, borderRadius: 12,
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: 10, borderRadius: 10,
     },
     periodBtnActive: { backgroundColor: '#FF6A00' },
-    periodText: { color: '#757575', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    periodText: { color: '#757575', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
     periodTextActive: { color: '#FFFFFF' },
     statsGrid: {
-        flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12,
-        marginBottom: 20,
+        flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 10,
+        marginBottom: 14,
     },
     statCard: {
-        width: (width - 52) / 2, backgroundColor: '#252121', borderRadius: 18,
-        padding: 18, borderLeftWidth: 3, borderWidth: 1, borderColor: '#353030',
+        width: (width - 42) / 2, backgroundColor: '#252121', borderRadius: 14,
+        padding: 14, borderLeftWidth: 3, borderWidth: 1, borderColor: '#353030',
     },
-    statValue: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold', marginTop: 10 },
-    statLabel: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4 },
+    statValue: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Inter_700Bold', marginTop: 8 },
+    statLabel: { color: '#757575', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 3 },
     chartCard: {
-        backgroundColor: '#252121', marginHorizontal: 20, borderRadius: 18,
-        padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#353030',
+        backgroundColor: '#252121', marginHorizontal: 16, borderRadius: 14,
+        padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#353030',
     },
-    chartTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_700Bold', marginBottom: 4 },
-    chartAmount: { color: '#FF6A00', fontSize: 22, fontFamily: 'Inter_700Bold', marginBottom: 20 },
+    chartTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold', marginBottom: 4 },
+    chartAmount: { color: '#FF6A00', fontSize: 20, fontFamily: 'Inter_700Bold', marginBottom: 16 },
     lineChart: { flexDirection: 'row', justifyContent: 'space-between', height: 120, alignItems: 'flex-end' },
     linePoint: { alignItems: 'center', flex: 1 },
     dot: {
@@ -273,9 +291,11 @@ const styles = StyleSheet.create({
     categoryAmount: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
     noDataText: { color: '#757575', fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center' },
     paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    paymentLabel: { color: '#A5A2A2', fontSize: 14, fontFamily: 'Inter_400Regular' },
-    paymentValue: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    paymentLabel: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+    paymentSubLabel: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    paymentValue: { color: '#FF6A00', fontSize: 15, fontFamily: 'Inter_700Bold' },
     paymentBar: {
+
         height: 6, backgroundColor: '#353030', borderRadius: 3, overflow: 'hidden',
     },
     paymentFill: { height: '100%', borderRadius: 3 },

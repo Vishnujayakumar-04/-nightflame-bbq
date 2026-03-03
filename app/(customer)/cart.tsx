@@ -2,14 +2,19 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable, StyleSheet 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppStrings } from '../../constants/Strings';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
+import { useShopStore } from '../../store/shopStore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PaymentQRModal } from '../../components/PaymentQRModal';
+import { PaymentSelectionModal } from '../../components/PaymentSelectionModal';
+import { Button } from '../../components/ui/Button';
+import { PaymentType, PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatTime = (date: Date) => {
@@ -19,16 +24,26 @@ const formatTime = (date: Date) => {
 export default function CartScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { items, incrementQuantity, decrementQuantity, getCartTotal, getItemCount } = useCartStore();
+    const { items, incrementQuantity, decrementQuantity, getCartTotal, getItemCount, clearCart } = useCartStore();
 
     const [selectedTime, setSelectedTime] = useState<Date | null>(null);
     const [isTimePickerVisible, setTimePickerVisible] = useState(false);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [isQRVisible, setQRVisible] = useState(false);
+    const [isPaymentSelectionVisible, setPaymentSelectionVisible] = useState(false);
+    const [isBillSummaryVisible, setBillSummaryVisible] = useState(false);
 
     const { user } = useAuthStore();
     const placeOrder = useOrderStore(state => state.placeOrder);
+    const { status, subscribeToStatus } = useShopStore();
     const cartTotal = getCartTotal();
     const cartCount = getItemCount();
+
+    // Subscribe to shop status to block checkout aggressively
+    useEffect(() => {
+        const unsubStatus = subscribeToStatus();
+        return () => unsubStatus();
+    }, []);
 
     const timeSlots = useMemo(() => {
         const slots: Date[] = [];
@@ -51,27 +66,25 @@ export default function CartScreen() {
         return slots;
     }, [items]);
 
-    const handlePlaceOrder = async () => {
+    const handlePlaceOrder = async (paymentType: PaymentType) => {
         if (!selectedTime || !user) return;
         setIsPlacingOrder(true);
-        let maxPrepTime = 15;
-        items.forEach(cartItem => {
-            if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
-                maxPrepTime = cartItem.menuItem.preparationTime;
-            }
-        });
-        const estimatedPickupTime = Date.now() + (maxPrepTime * 60000);
+
         try {
             const newOrderId = await placeOrder({
                 userId: user.userId,
                 items,
                 totalAmount: cartTotal,
                 pickupTime: selectedTime.getTime(),
-                estimatedPickupTime,
-                paymentStatus: 'Unpaid',
-                paymentMethod: 'Cash'
+                paymentType,
+                paymentStatus: paymentType === PaymentType.PAY_NOW ? PaymentStatus.PAYMENT_INITIATED : PaymentStatus.UNPAID,
+                paymentMethod: paymentType === PaymentType.PAY_NOW ? PaymentMethod.UPI : null,
+                notificationShown: false,
+                isLocked: false,
+                lockedBy: null
             });
             useCartStore.getState().clearCart();
+            setQRVisible(false);
             router.replace(`/(customer)/order-confirmation/${newOrderId}`);
         } catch (error) {
             console.error("Order failed", error);
@@ -116,11 +129,16 @@ export default function CartScreen() {
                     <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Cart ({cartCount})</Text>
-                <View style={{ width: 32 }} />
+                <TouchableOpacity onPress={() => {
+                    clearCart();
+                }} style={styles.removeAllBtn}>
+                    <Ionicons name="trash-outline" size={16} color="#EF5350" />
+                    <Text style={styles.removeAllText}>Clear</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Cart Items */}
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 280 }}>
                 {items.map((cartItem, index) => {
                     const item = cartItem.menuItem;
                     return (
@@ -132,6 +150,11 @@ export default function CartScreen() {
                                         {item.comboItems.join(' • ')}
                                     </Text>
                                 )}
+                                {cartItem.specialInstructions ? (
+                                    <Text style={{ color: '#FF9800', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 }} numberOfLines={1}>
+                                        📝 {cartItem.specialInstructions}
+                                    </Text>
+                                ) : null}
                                 <Text style={styles.cartItemPrice}>{formatCurrency(item.price)}</Text>
                             </View>
 
@@ -162,42 +185,48 @@ export default function CartScreen() {
 
             {/* Bottom Checkout */}
             <View style={[styles.checkoutBar, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
-                <TouchableOpacity
-                    onPress={() => setTimePickerVisible(true)}
-                    style={styles.timePicker}
-                >
-                    <Ionicons name="time-outline" size={22} color="#FF6A00" />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.timeLabel}>{AppStrings.pickupTime}</Text>
-                        <Text style={[styles.timeValue, !selectedTime && { color: '#757575' }]}>
-                            {selectedTime ? formatTime(selectedTime) : AppStrings.selectPickupTime}
-                        </Text>
+
+                {!status?.isOpen ? (
+                    <View style={styles.closedMessageContainer}>
+                        <Ionicons name="moon" size={20} color="#EF5350" />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.closedMessageText}>
+                                {status?.message || "Shop is currently closed"}
+                            </Text>
+                            <Text style={styles.cartOpensAtText}>
+                                Scheduled to open at {status?.openTime || '6:00 PM'}
+                            </Text>
+                        </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color="#757575" />
-                </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        onPress={() => setTimePickerVisible(true)}
+                        style={styles.timePicker}
+                    >
+                        <Ionicons name="time-outline" size={22} color="#FF6A00" />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={styles.timeLabel}>{AppStrings.pickupTime}</Text>
+                            <Text style={[styles.timeValue, !selectedTime && { color: '#757575' }]}>
+                                {selectedTime ? formatTime(selectedTime) : AppStrings.selectPickupTime}
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#757575" />
+                    </TouchableOpacity>
+                )}
 
                 <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>Total</Text>
                     <Text style={styles.totalValue}>{formatCurrency(cartTotal)}</Text>
                 </View>
 
-                <TouchableOpacity
-                    onPress={handlePlaceOrder}
-                    disabled={!selectedTime || isPlacingOrder}
-                    style={[styles.placeOrderBtn, (!selectedTime || isPlacingOrder) && { opacity: 0.5 }]}
-                >
-                    <LinearGradient
-                        colors={['#FF6A00', '#E53B0A']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.placeOrderGradient}
-                    >
-                        <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.placeOrderText}>
-                            {isPlacingOrder ? 'Placing...' : AppStrings.placeOrder}
-                        </Text>
-                    </LinearGradient>
-                </TouchableOpacity>
+                <View style={{ marginTop: 12 }}>
+                    <Button
+                        title="View Bill"
+                        onPress={() => setBillSummaryVisible(true)}
+                        disabled={!status?.isOpen || !selectedTime || isPlacingOrder}
+                        loading={isPlacingOrder}
+                    />
+                </View>
             </View>
 
             {/* Time Picker Modal */}
@@ -225,6 +254,107 @@ export default function CartScreen() {
                                 );
                             })}
                         </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            {/* Static QR Payment Modal */}
+            <PaymentQRModal
+                visible={isQRVisible}
+                amount={cartTotal}
+                isLoading={isPlacingOrder}
+                onClose={() => setQRVisible(false)}
+                onPaid={() => handlePlaceOrder(PaymentType.PAY_NOW)}
+            />
+
+            {/* Payment Selection Modal */}
+            <PaymentSelectionModal
+                visible={isPaymentSelectionVisible}
+                onClose={() => setPaymentSelectionVisible(false)}
+                onSelectPayNow={() => {
+                    setPaymentSelectionVisible(false);
+                    setTimeout(() => setQRVisible(true), 150);
+                }}
+                onSelectPayLater={() => {
+                    setPaymentSelectionVisible(false);
+                    handlePlaceOrder(PaymentType.PAY_LATER);
+                }}
+                isShopOpen={!!status?.isOpen}
+                isSubmitting={isPlacingOrder}
+            />
+
+            {/* Bill Summary Modal */}
+            <Modal visible={isBillSummaryVisible} transparent animationType="slide">
+                <Pressable style={styles.modalOverlay} onPress={() => setBillSummaryVisible(false)}>
+                    <Pressable style={[styles.billModalContent, { paddingBottom: Math.max(32, insets.bottom + 16) }]} onPress={(e) => e.stopPropagation()}>
+                        <View style={styles.modalHandle} />
+                        <Text style={styles.billTitle}>🧾 Order Summary</Text>
+
+                        {/* Itemized List */}
+                        <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+                            {items.map((cartItem) => {
+                                const item = cartItem.menuItem;
+                                return (
+                                    <View key={item.itemId} style={styles.billRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.billItemName}>{item.name}</Text>
+                                            <Text style={styles.billItemQty}>{formatCurrency(item.price)} × {cartItem.quantity}</Text>
+                                        </View>
+                                        <Text style={styles.billItemTotal}>
+                                            {formatCurrency(item.price * cartItem.quantity)}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {/* Divider */}
+                        <View style={styles.billDivider} />
+
+                        {/* Subtotal */}
+                        <View style={styles.billSummaryRow}>
+                            <Text style={styles.billSummaryLabel}>Subtotal</Text>
+                            <Text style={styles.billSummaryValue}>{formatCurrency(cartTotal)}</Text>
+                        </View>
+                        <View style={styles.billSummaryRow}>
+                            <Text style={styles.billSummaryLabel}>Taxes & Charges</Text>
+                            <Text style={[styles.billSummaryValue, { color: '#4CAF50' }]}>₹0</Text>
+                        </View>
+
+                        {/* Grand Total */}
+                        <View style={[styles.billDivider, { marginTop: 12 }]} />
+                        <View style={[styles.billSummaryRow, { marginTop: 12 }]}>
+                            <Text style={styles.billGrandLabel}>Grand Total</Text>
+                            <Text style={styles.billGrandValue}>{formatCurrency(cartTotal)}</Text>
+                        </View>
+
+                        {/* Pickup Time */}
+                        {selectedTime && (
+                            <View style={styles.billPickupRow}>
+                                <Ionicons name="time-outline" size={16} color="#FF6A00" />
+                                <Text style={styles.billPickupText}>Pickup at {formatTime(selectedTime)}</Text>
+                            </View>
+                        )}
+
+                        {/* Place Order Button */}
+                        <TouchableOpacity
+                            style={styles.placeOrderBtn}
+                            activeOpacity={0.85}
+                            onPress={() => {
+                                setBillSummaryVisible(false);
+                                setTimeout(() => setPaymentSelectionVisible(true), 200);
+                            }}
+                        >
+                            <LinearGradient
+                                colors={['#FF6A00', '#E53B0A']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.placeOrderGradient}
+                            >
+                                <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                                <Text style={styles.placeOrderText}>Place Order</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </Pressable>
                 </Pressable>
             </Modal>
@@ -454,5 +584,126 @@ const styles = StyleSheet.create({
         color: '#A5A2A2',
         fontFamily: 'Inter_600SemiBold',
         fontSize: 14,
+    },
+    closedMessageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: 'rgba(239, 83, 80, 0.1)',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(239, 83, 80, 0.3)',
+        marginBottom: 20,
+        gap: 12,
+    },
+    closedMessageText: {
+        color: '#EF5350',
+        fontSize: 14,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    cartOpensAtText: {
+        color: 'rgba(239, 83, 80, 0.7)',
+        fontSize: 12,
+        fontFamily: 'Inter_400Regular',
+        marginTop: 2,
+    },
+    // Bill Summary Modal
+    billModalContent: {
+        backgroundColor: '#1A1818',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        padding: 24,
+    },
+    billTitle: {
+        color: '#FFFFFF',
+        fontSize: 22,
+        fontFamily: 'Poppins_700Bold',
+        marginBottom: 20,
+    },
+    billRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(53, 48, 48, 0.4)',
+    },
+    billItemName: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'Inter_600SemiBold',
+        marginBottom: 2,
+    },
+    billItemQty: {
+        color: '#757575',
+        fontSize: 12,
+        fontFamily: 'Inter_400Regular',
+    },
+    billItemTotal: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    billDivider: {
+        height: 1,
+        backgroundColor: '#353030',
+        marginVertical: 8,
+    },
+    billSummaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    billSummaryLabel: {
+        color: '#A5A2A2',
+        fontSize: 14,
+        fontFamily: 'Inter_400Regular',
+    },
+    billSummaryValue: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    billGrandLabel: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'Inter_700Bold',
+    },
+    billGrandValue: {
+        color: '#FF6A00',
+        fontSize: 24,
+        fontFamily: 'Inter_700Bold',
+    },
+    billPickupRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#252121',
+        padding: 14,
+        borderRadius: 14,
+        marginTop: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    billPickupText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontFamily: 'Inter_600SemiBold',
+    },
+    removeAllBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: 'rgba(239, 83, 80, 0.12)',
+    },
+    removeAllText: {
+        color: '#EF5350',
+        fontSize: 12,
+        fontFamily: 'Inter_600SemiBold',
     },
 });

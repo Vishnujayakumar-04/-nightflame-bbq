@@ -90,7 +90,7 @@ export default function MenuManagementScreen() {
     };
 
     const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
-        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={styles.menuCard}>
+        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={[styles.menuCard, !item.available && { opacity: 0.65 }]}>
             {item.imageUrl ? (
                 <Image source={{ uri: item.imageUrl }} style={styles.menuImage} resizeMode="cover" />
             ) : (
@@ -101,7 +101,14 @@ export default function MenuManagementScreen() {
             <View style={styles.menuInfo}>
                 <Text style={styles.menuName} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.menuPrice}>{formatCurrency(item.price)}</Text>
-                <Text style={styles.menuCategory}>{item.category}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Text style={styles.menuCategory}>{item.category}</Text>
+                    {!item.available && (
+                        <View style={styles.outOfStockBadge}>
+                            <Text style={styles.outOfStockText}>Out of Stock</Text>
+                        </View>
+                    )}
+                </View>
             </View>
             <View style={styles.menuActions}>
                 <Switch
@@ -141,23 +148,25 @@ export default function MenuManagementScreen() {
             </View>
 
             {/* Category Chips */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoryList}
-            >
-                {CATEGORIES.map(cat => (
-                    <TouchableOpacity
-                        key={cat}
-                        style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
-                        onPress={() => setSelectedCategory(cat)}
-                    >
-                        <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
-                            {cat}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+            <View style={{ height: 48, marginBottom: 6 }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categoryList}
+                >
+                    {CATEGORIES.map(cat => (
+                        <TouchableOpacity
+                            key={cat}
+                            style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
+                            onPress={() => setSelectedCategory(cat)}
+                        >
+                            <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                                {cat}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
 
             {/* Item count or Empty State Banner */}
             {menuItems.length === 0 && !isLoading ? (
@@ -202,15 +211,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14,
     },
-    title: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Poppins_700Bold', fontStyle: 'italic' },
+    title: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Poppins_700Bold', fontStyle: 'italic' },
     addItemBtn: {
         flexDirection: 'row', alignItems: 'center', gap: 6,
         backgroundColor: '#FF6A00', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
     },
     addItemText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_700Bold' },
-    categoryList: { paddingHorizontal: 16, gap: 8, marginBottom: 10 },
+    categoryList: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
     categoryChip: {
-        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, height: 40,
         backgroundColor: '#252121', borderWidth: 1, borderColor: '#353030',
     },
     categoryChipActive: { backgroundColor: '#FF6A00', borderColor: '#FF6A00' },
@@ -230,6 +239,17 @@ const styles = StyleSheet.create({
     menuName: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold', marginBottom: 2 },
     menuPrice: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_700Bold', marginBottom: 2 },
     menuCategory: { color: '#757575', fontSize: 11, fontFamily: 'Inter_400Regular' },
+    outOfStockBadge: {
+        backgroundColor: 'rgba(239, 83, 80, 0.15)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    outOfStockText: {
+        color: '#EF5350',
+        fontSize: 10,
+        fontFamily: 'Inter_600SemiBold',
+    },
     menuActions: { flexDirection: 'column', alignItems: 'center', gap: 6 },
     editBtn: { padding: 4 },
     deleteBtn: { padding: 4 },

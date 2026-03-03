@@ -13,21 +13,13 @@ export default function OtpVerificationScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const { verifyOtp, phoneNumber, error } = useAuthStore();
 
-    const isValid = otp.length === 6;
-
-    useEffect(() => {
-        if (otp.length === 6 && !isLoading) {
-            handleVerify();
-        }
-    }, [otp]);
-
-    const handleVerify = async () => {
-        if (isValid) {
+    const handleVerify = async (val: string) => {
+        if (val.length === 6) {
             setIsLoading(true);
             try {
-                const isNewUser = await verifyOtp(otp);
+                const isNewUser = await verifyOtp(val);
                 if (isNewUser) {
-                    router.replace('/(auth)/register');
+                    router.replace('/(auth)/enter-name');
                 } else {
                     router.replace('/(customer)/home');
                 }
@@ -49,16 +41,18 @@ export default function OtpVerificationScreen() {
                 </Pressable>
 
                 <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.content}>
-                    <Text style={styles.title}>Enter PIN</Text>
-                    <Text style={styles.subtitle}>
-                        Enter the 6-digit verification PIN for{'\n'}+91 {phoneNumber || '**********'}
-                    </Text>
+                    <Text style={styles.title}>Confirm PIN</Text>
+                    <Text style={styles.subtitle}>Enter the 6-digit PIN sent to {'\n'}+91 {phoneNumber}</Text>
 
                     {/* PIN Input */}
-                    <View style={styles.otpContainer}>
+                    <View style={[styles.otpContainer, error ? { borderColor: '#EF5350' } : {}]}>
                         <TextInput
                             value={otp}
-                            onChangeText={setOtp}
+                            onChangeText={(t) => {
+                                const clean = t.replace(/\D/g, '');
+                                setOtp(clean);
+                                if (clean.length === 6) handleVerify(clean);
+                            }}
                             keyboardType="number-pad"
                             maxLength={6}
                             placeholder="------"
@@ -68,7 +62,6 @@ export default function OtpVerificationScreen() {
                         />
                     </View>
 
-                    {/* Hint */}
                     {error ? (
                         <Text style={styles.errorText}>{error}</Text>
                     ) : (
@@ -79,11 +72,11 @@ export default function OtpVerificationScreen() {
                 {/* Bottom Button */}
                 <View style={styles.bottomSection}>
                     <Pressable
-                        onPress={handleVerify}
-                        disabled={!isValid || isLoading}
+                        onPress={() => handleVerify(otp)}
+                        disabled={otp.length !== 6 || isLoading}
                         style={({ pressed }) => [
                             styles.verifyButton,
-                            (!isValid || isLoading) && { opacity: 0.5 },
+                            (otp.length !== 6 || isLoading) && { opacity: 0.5 },
                             pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
                         ]}
                     >
@@ -94,7 +87,7 @@ export default function OtpVerificationScreen() {
                             style={styles.verifyGradient}
                         >
                             <Text style={styles.verifyText}>
-                                {isLoading ? 'Verifying...' : 'Verify'}
+                                {isLoading ? 'Verifying...' : 'Verify & Continue'}
                             </Text>
                         </LinearGradient>
                     </Pressable>
@@ -105,33 +98,33 @@ export default function OtpVerificationScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0D0D0D' },
+    container: { flex: 1, backgroundColor: '#0A0A0A' },
     safeArea: { flex: 1 },
     backButton: {
         flexDirection: 'row', alignItems: 'center',
         paddingHorizontal: 24, paddingVertical: 12, gap: 6,
     },
     backText: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular' },
-    content: { paddingHorizontal: 24, marginTop: 24 },
-    title: { color: '#FFFFFF', fontSize: 28, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
-    subtitle: { color: '#A5A2A2', fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 36, lineHeight: 22 },
+    content: { paddingHorizontal: 24, marginTop: 40 },
+    title: { color: '#FFFFFF', fontSize: 32, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
+    subtitle: { color: '#A5A2A2', fontSize: 16, fontFamily: 'Inter_400Regular', marginBottom: 48, lineHeight: 22 },
     otpContainer: {
-        backgroundColor: '#1E1E1E', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 20,
-        marginBottom: 20, borderWidth: 1, borderColor: '#353030',
+        backgroundColor: '#1A1817', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 20,
+        marginBottom: 20, borderWidth: 1, borderColor: '#352520',
     },
     otpInput: {
-        color: '#FFFFFF', fontSize: 32, fontFamily: 'Inter_700Bold', marginLeft: 16,
-        textAlign: 'center', padding: 0,
+        color: '#FFFFFF', fontSize: 36, fontFamily: 'Poppins_700Bold',
+        textAlign: 'center', letterSpacing: 8, padding: 0,
     },
     errorText: { color: '#EF5350', fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', marginBottom: 8 },
     hintText: { color: '#5A4030', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
     bottomSection: {
-        flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 24,
+        flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 40,
     },
-    verifyButton: { borderRadius: 14, overflow: 'hidden' },
+    verifyButton: { borderRadius: 30, overflow: 'hidden' },
     verifyGradient: {
         alignItems: 'center', justifyContent: 'center',
-        paddingVertical: 18, borderRadius: 14,
+        paddingVertical: 18, borderRadius: 30,
     },
-    verifyText: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_700Bold' },
+    verifyText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Poppins_700Bold', letterSpacing: 1 },
 });

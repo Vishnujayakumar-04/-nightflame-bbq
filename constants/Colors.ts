@@ -28,3 +28,4 @@ export const AppColors = {
     shimmerBase: '#FF2A2A2A',
     shimmerHighlight: '#FF3A3A3A',
 };
+

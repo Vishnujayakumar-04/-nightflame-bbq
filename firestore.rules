@@ -20,9 +20,17 @@ service cloud.firestore {
 
     // --- Menu Collection ---
     match /menuItems/{itemId} {
-      // Anyone authenticated can read the menu
-      allow read: if request.auth != null;
+      // Anyone can read the menu (even without auth)
+      allow read: if true;
       // Only admin can write (add, update, delete)
+      allow write: if isAdmin();
+    }
+
+    // --- Settings / Shop Status ---
+    match /settings/{docId} {
+      // Anyone can see if the shop is open/closed
+      allow read: if true;
+      // Only admin can modify shop settings
       allow write: if isAdmin();
     }
 
@@ -31,11 +39,17 @@ service cloud.firestore {
       // Customers can read their own orders, Admin can read all
       allow read: if request.auth != null && 
         (resource.data.userId == request.auth.uid || isAdmin());
-      // Customers can create orders (for themselves), Admins can create anything (Walk-ins)
-      allow create: if request.auth != null && 
-        (request.resource.data.userId == request.auth.uid || isAdmin());
-      // Only admin can update order status
-      allow update: if isAdmin();
+      // Customers can create orders (for themselves) as long as they don't mark it Paid. Admins can create anything (Walk-ins)
+      allow create: if request.auth != null && (
+        (request.resource.data.userId == request.auth.uid && request.resource.data.paymentStatus != 'Paid') || isAdmin()
+      );
+      // Admin can update freely. Customers can only update to mark as "Payment Initiated".
+      allow update: if isAdmin() || (
+        request.auth != null && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus', 'paymentType', 'notificationShown']) &&
+        request.resource.data.paymentStatus == 'Payment Initiated'
+      );
       // No one can delete orders
       allow delete: if false;
     }

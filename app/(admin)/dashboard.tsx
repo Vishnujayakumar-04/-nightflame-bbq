@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,12 +7,15 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
-import { useMenuStore } from '../../store/menuStore';
 import { useShopStore } from '../../store/shopStore';
+import { useMenuStore } from '../../store/menuStore';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { OrderStatus, ShopStatus } from '../../types/models';
+import { Order, ShopStatus } from '../../types/models';
 import { useState } from 'react';
 import { TextInput, Switch } from 'react-native';
+import { AdminPaymentModal } from '../../components/AdminPaymentModal';
+import { AdminActionModal } from '../../components/AdminActionModal';
+import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
@@ -25,10 +28,19 @@ const getRelativeTime = (timestamp: number) => {
 
 export default function AdminDashboardScreen() {
     const router = useRouter();
-    const { orders, subscribeToOrders, updateOrderStatus } = useOrderStore();
+    const { orders, subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
     const { user, signOut } = useAuthStore();
-    const { subscribeToMenu } = useMenuStore();
+    const { menuItems, subscribeToMenu } = useMenuStore();
     const { status, subscribeToStatus, updateStatus } = useShopStore();
+
+    const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Order | null>(null);
+    const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
+    const [isPaymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [isActionModalVisible, setActionModalVisible] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [showSpecialPicker, setShowSpecialPicker] = useState(false);
+
+    const currentSpecialItem = menuItems.find(i => i.itemId === status?.todaySpecialItemId) || null;
 
     useEffect(() => {
         const unsubOrders = subscribeToOrders();
@@ -42,30 +54,46 @@ export default function AdminDashboardScreen() {
     }, []);
 
     const handleStatusUpdate = (orderId: string) => {
-        Alert.alert(
-            'Update Status',
-            'Change order stage:',
-            [
-                { text: 'Pending', onPress: () => updateOrderStatus(orderId, OrderStatus.pending) },
-                { text: 'Preparing', onPress: () => updateOrderStatus(orderId, OrderStatus.preparing) },
-                { text: 'Ready', onPress: () => updateOrderStatus(orderId, OrderStatus.ready) },
-                { text: 'Completed', onPress: () => updateOrderStatus(orderId, OrderStatus.completed) },
-                { text: 'Cancel', style: 'cancel' }
-            ]
-        );
+        const order = orders.find(o => o.orderId === orderId);
+        if (!order) return;
+        setSelectedOrderForAction(order);
+        setActionModalVisible(true);
+    };
+
+    const handleConfirmPayment = async (method: PaymentMethod.CASH | PaymentMethod.UPI, transactionId?: string) => {
+        if (!selectedOrderForPayment) return;
+        setIsProcessingPayment(true);
+        try {
+            await confirmPayment(selectedOrderForPayment.orderId, method, transactionId);
+            setPaymentModalVisible(false);
+            setSelectedOrderForPayment(null);
+        } catch (e) {
+            console.error(e);
+            Alert.alert('Error', 'Failed to confirm payment.');
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
+
+    const handleClosePaymentModal = async () => {
+        if (selectedOrderForPayment) {
+            await unlockOrder(selectedOrderForPayment.orderId);
+        }
+        setPaymentModalVisible(false);
+        setSelectedOrderForPayment(null);
     };
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const todayOrders = orders.filter(o => o.timestamp >= startOfToday);
-    const todayRevenue = todayOrders.filter(o => o.paymentStatus === 'Paid').reduce((sum, o) => sum + o.totalAmount, 0);
-    const activeOrders = todayOrders.filter(o => o.status !== OrderStatus.completed);
+    const todayRevenue = todayOrders.filter(o => o.paymentStatus === PaymentStatus.PAID).reduce((sum, o) => sum + o.totalAmount, 0);
+    const activeOrders = todayOrders.filter(o => o.status !== OrderStatus.COMPLETED);
 
     // Live queue counts
-    const pendingCount = todayOrders.filter(o => o.status === OrderStatus.pending).length;
-    const preparingCount = todayOrders.filter(o => o.status === OrderStatus.preparing).length;
-    const readyCount = todayOrders.filter(o => o.status === OrderStatus.ready).length;
-    const confirmedCount = todayOrders.filter(o => o.status !== OrderStatus.pending && o.status !== OrderStatus.completed).length - preparingCount - readyCount;
+    const pendingCount = todayOrders.filter(o => o.status === OrderStatus.PENDING).length;
+    const preparingCount = todayOrders.filter(o => o.status === OrderStatus.PREPARING).length;
+    const readyCount = todayOrders.filter(o => o.status === OrderStatus.READY).length;
+    const confirmedCount = todayOrders.filter(o => o.status !== OrderStatus.PENDING && o.status !== OrderStatus.COMPLETED).length - preparingCount - readyCount;
 
     const recentOrders = [...todayOrders].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
@@ -211,6 +239,25 @@ export default function AdminDashboardScreen() {
                     )}
                 </Animated.View>
 
+                {/* TODAY'S SPECIAL */}
+                <Text style={styles.sectionLabel}>TODAY'S SPECIAL</Text>
+                <Animated.View entering={FadeInDown.delay(375).duration(600)} style={styles.controlCard}>
+                    <TouchableOpacity
+                        style={styles.controlRow}
+                        onPress={() => setShowSpecialPicker(true)}
+                    >
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.controlTitle}>Daily Special Item</Text>
+                            <Text style={styles.controlSub}>
+                                {currentSpecialItem
+                                    ? `🔥 ${currentSpecialItem.name}`
+                                    : 'Tap to set today\'s special'}
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#757575" />
+                    </TouchableOpacity>
+                </Animated.View>
+
 
                 {/* Recent Orders */}
                 <View style={styles.recentHeader}>
@@ -251,9 +298,11 @@ export default function AdminDashboardScreen() {
                                     <Text style={styles.orderTimeText}>{getRelativeTime(order.timestamp)}</Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Text style={[styles.paymentTag, { color: order.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }]}>
-                                        {order.paymentMethod} · {order.paymentStatus}
-                                    </Text>
+                                    <View style={[styles.badge, { backgroundColor: order.paymentStatus === PaymentStatus.PAID ? 'rgba(76, 175, 80, 0.15)' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? 'rgba(255, 152, 0, 0.15)' : 'rgba(239, 83, 80, 0.15)' }]}>
+                                        <Text style={[styles.badgeText, { color: order.paymentStatus === PaymentStatus.PAID ? '#4CAF50' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? '#FF9800' : '#EF5350' }]}>
+                                            {order.paymentStatus === PaymentStatus.PAID ? 'PREPAID' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? 'VERIFY UPI' : 'UNPAID'}
+                                        </Text>
+                                    </View>
                                     <Text style={styles.orderAmount}>{formatCurrency(order.totalAmount)}</Text>
                                 </View>
                             </View>
@@ -262,7 +311,86 @@ export default function AdminDashboardScreen() {
                 ))}
 
             </ScrollView>
-        </SafeAreaView>
+
+            {
+                selectedOrderForPayment && (
+                    <AdminPaymentModal
+                        visible={isPaymentModalVisible}
+                        orderId={selectedOrderForPayment.orderId}
+                        amount={selectedOrderForPayment.totalAmount}
+                        customerName={selectedOrderForPayment.customerName || 'Walk-in'}
+                        isLoading={isProcessingPayment}
+                        onClose={handleClosePaymentModal}
+                        onConfirm={handleConfirmPayment}
+                    />
+                )
+            }
+
+            <AdminActionModal
+                visible={isActionModalVisible}
+                order={selectedOrderForAction}
+                onClose={() => {
+                    setActionModalVisible(false);
+                    setSelectedOrderForAction(null);
+                }}
+                onUpdateStatus={(id, status) => {
+                    updateOrderStatus(id, status);
+                    setActionModalVisible(false);
+                }}
+                onCollectPayment={async (order) => {
+                    setActionModalVisible(false);
+                    await lockOrder(order.orderId);
+                    setSelectedOrderForPayment(order);
+                    setPaymentModalVisible(true);
+                }}
+            />
+
+            {/* Today's Special Picker Modal */}
+            <Modal visible={showSpecialPicker} transparent animationType="slide" onRequestClose={() => setShowSpecialPicker(false)}>
+                <Pressable style={specialStyles.overlay} onPress={() => setShowSpecialPicker(false)}>
+                    <Pressable style={specialStyles.content} onPress={(e) => e.stopPropagation()}>
+                        <View style={specialStyles.handle} />
+                        <Text style={specialStyles.title}>Set Today's Special</Text>
+                        <FlatList
+                            data={menuItems.filter(i => i.available)}
+                            keyExtractor={(item) => item.itemId}
+                            showsVerticalScrollIndicator={false}
+                            style={{ maxHeight: 400 }}
+                            renderItem={({ item }) => {
+                                const isSelected = status?.todaySpecialItemId === item.itemId;
+                                return (
+                                    <TouchableOpacity
+                                        style={[specialStyles.item, isSelected && specialStyles.itemSelected]}
+                                        onPress={() => {
+                                            updateStatus({ todaySpecialItemId: item.itemId });
+                                            setShowSpecialPicker(false);
+                                        }}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={specialStyles.itemName}>{item.name}</Text>
+                                            <Text style={specialStyles.itemPrice}>₹{item.price} • {item.category}</Text>
+                                        </View>
+                                        {isSelected && <Ionicons name="checkmark-circle" size={22} color="#4CAF50" />}
+                                    </TouchableOpacity>
+                                );
+                            }}
+                            ListEmptyComponent={
+                                <Text style={{ color: '#757575', textAlign: 'center', padding: 20 }}>No menu items available</Text>
+                            }
+                        />
+                        <TouchableOpacity
+                            style={specialStyles.clearBtn}
+                            onPress={() => {
+                                updateStatus({ todaySpecialItemId: undefined });
+                                setShowSpecialPicker(false);
+                            }}
+                        >
+                            <Text style={specialStyles.clearText}>Clear Special</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+        </SafeAreaView >
     );
 }
 
@@ -270,75 +398,75 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#1A1818' },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16,
+        paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     adminBadge: {
-        width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 106, 0, 0.12)',
+        width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255, 106, 0, 0.12)',
         alignItems: 'center', justifyContent: 'center',
     },
-    adminLabel: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular' },
-    adminName: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_700Bold' },
+    adminLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Inter_400Regular' },
+    adminName: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
     logoutBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        backgroundColor: '#252121', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        backgroundColor: '#252121', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
     },
-    logoutText: { color: '#A5A2A2', fontSize: 13, fontFamily: 'Inter_400Regular' },
-    statsContainer: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 20 },
+    logoutText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular' },
+    statsContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 16 },
     revenueCard: {
-        flex: 1.5, backgroundColor: '#FF6A00', borderRadius: 18, padding: 20, justifyContent: 'center',
+        flex: 1.5, backgroundColor: '#FF6A00', borderRadius: 16, padding: 16, justifyContent: 'center',
     },
-    revenueLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 24, fontFamily: 'Inter_700Bold' },
-    revenueAmount: { color: '#FFFFFF', fontSize: 28, fontFamily: 'Poppins_700Bold', marginTop: 4 },
-    revenueSubLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 4 },
-    statsColumn: { flex: 1, gap: 12 },
+    revenueLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 20, fontFamily: 'Inter_700Bold' },
+    revenueAmount: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Poppins_700Bold', marginTop: 2 },
+    revenueSubLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 3 },
+    statsColumn: { flex: 1, gap: 10 },
     statBox: {
-        flex: 1, backgroundColor: '#252121', borderRadius: 16, padding: 14, justifyContent: 'center',
+        flex: 1, backgroundColor: '#252121', borderRadius: 14, padding: 12, justifyContent: 'center',
         borderWidth: 1, borderColor: '#353030',
     },
-    statNumber: { color: '#FFFFFF', fontSize: 22, fontFamily: 'Inter_700Bold' },
-    statBoxLabel: { color: '#757575', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    statNumber: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Inter_700Bold' },
+    statBoxLabel: { color: '#757575', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 },
     sectionLabel: {
-        color: '#757575', fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 1,
-        paddingHorizontal: 20, marginBottom: 12,
+        color: '#757575', fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1,
+        paddingHorizontal: 16, marginBottom: 10,
     },
-    queueRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 20 },
+    queueRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 6, marginBottom: 16 },
     queueItem: {
-        flex: 1, backgroundColor: '#252121', borderRadius: 14, padding: 14, alignItems: 'center',
+        flex: 1, backgroundColor: '#252121', borderRadius: 12, padding: 12, alignItems: 'center',
         borderWidth: 1,
     },
-    queueCount: { fontSize: 24, fontFamily: 'Inter_700Bold' },
-    queueLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 4 },
-    actionRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 24 },
+    queueCount: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+    queueLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 3 },
+    actionRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 20 },
     walkInBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        backgroundColor: '#FF6A00', paddingVertical: 14, borderRadius: 14,
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        backgroundColor: '#FF6A00', paddingVertical: 12, borderRadius: 12,
     },
-    walkInText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_700Bold' },
+    walkInText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_700Bold' },
     analyticsBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        backgroundColor: '#252121', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#353030',
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        backgroundColor: '#252121', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#353030',
     },
-    analyticsText: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    analyticsText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
     controlCard: {
         backgroundColor: '#252121',
-        marginHorizontal: 20,
-        borderRadius: 20,
-        padding: 20,
+        marginHorizontal: 16,
+        borderRadius: 16,
+        padding: 16,
         borderWidth: 1,
         borderColor: '#353030',
-        marginBottom: 24,
+        marginBottom: 20,
     },
     controlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    controlTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
-    controlSub: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-    divider: { height: 1, backgroundColor: '#353030', marginVertical: 16 },
-    timeInputsRow: { flexDirection: 'row', gap: 12 },
-    inputLabel: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
+    controlTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
+    controlSub: { color: '#757575', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    divider: { height: 1, backgroundColor: '#353030', marginVertical: 12 },
+    timeInputsRow: { flexDirection: 'row', gap: 10 },
+    inputLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
     timeInput: {
         backgroundColor: '#1A1818',
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 10,
+        padding: 10,
         color: '#FFFFFF',
         fontFamily: 'Inter_600SemiBold',
         borderWidth: 1,
@@ -346,26 +474,26 @@ const styles = StyleSheet.create({
     },
     messageInput: {
         backgroundColor: '#1A1818',
-        borderRadius: 12,
-        padding: 14,
+        borderRadius: 10,
+        padding: 12,
         color: '#FFFFFF',
         fontFamily: 'Inter_400Regular',
         borderWidth: 1,
         borderColor: '#353030',
-        minHeight: 80,
+        minHeight: 70,
         textAlignVertical: 'top',
     },
     recentHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 20, marginBottom: 12,
+        paddingHorizontal: 16, marginBottom: 10,
     },
-    seeAllText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    seeAllText: { color: '#FF6A00', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
     orderCard: {
-        backgroundColor: '#252121', marginHorizontal: 20, marginBottom: 12, borderRadius: 16,
-        padding: 16, borderWidth: 1, borderColor: '#353030',
+        backgroundColor: '#252121', marginHorizontal: 16, marginBottom: 10, borderRadius: 14,
+        padding: 14, borderWidth: 1, borderColor: '#353030',
     },
-    orderCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    orderIdText: { color: '#FF6A00', fontSize: 15, fontFamily: 'Inter_700Bold' },
+    orderCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    orderIdText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_700Bold' },
     walkInTag: {
         backgroundColor: 'rgba(255, 193, 7, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     },
@@ -374,6 +502,38 @@ const styles = StyleSheet.create({
     orderItemsText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular', marginBottom: 10 },
     orderCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     orderTimeText: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular' },
-    paymentTag: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+    badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    badgeText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
     orderAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+});
+
+const specialStyles = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+    content: {
+        backgroundColor: '#1A1818', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        padding: 20, paddingBottom: 40, maxHeight: '70%',
+    },
+    handle: {
+        width: 40, height: 4, backgroundColor: '#555', borderRadius: 2,
+        alignSelf: 'center', marginBottom: 16,
+    },
+    title: {
+        color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold',
+        textAlign: 'center', marginBottom: 16,
+    },
+    item: {
+        flexDirection: 'row', alignItems: 'center',
+        padding: 14, backgroundColor: '#252121', borderRadius: 12, marginBottom: 8,
+        borderWidth: 1, borderColor: '#353030',
+    },
+    itemSelected: {
+        borderColor: '#4CAF50', backgroundColor: 'rgba(76, 175, 80, 0.08)',
+    },
+    itemName: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    itemPrice: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    clearBtn: {
+        padding: 14, alignItems: 'center', marginTop: 8,
+        borderWidth: 1, borderColor: '#353030', borderRadius: 12,
+    },
+    clearText: { color: '#EF5350', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });

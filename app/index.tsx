@@ -1,15 +1,15 @@
+import { UserRole } from '../constants/enums';
 import { View, ActivityIndicator } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuthStore } from "../store/authStore";
-import { AppColors } from "../constants/Colors";
 
 export default function IndexScreen() {
-    const { user, isLoading } = useAuthStore();
+    const { user, isLoading, isInitializing } = useAuthStore();
 
-    if (isLoading) {
+    if (isLoading || isInitializing) {
         return (
-            <View className="flex-1 items-center justify-center bg-background">
-                <ActivityIndicator size="large" color={AppColors.flameOrange} />
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A1817' }}>
+                <ActivityIndicator size="large" color="#FF6A00" />
             </View>
         );
     }
@@ -18,7 +18,7 @@ export default function IndexScreen() {
         return <Redirect href="/(auth)/welcome" />;
     }
 
-    if (user.role === 'admin') {
+    if (user.role === UserRole.ADMIN) {
         return <Redirect href="/(admin)/dashboard" />;
     }
 

@@ -1,47 +1,58 @@
+import { UserRole } from '../constants/enums';
 import { create } from 'zustand';
 import { auth, db } from '../firebaseConfig';
 import { signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User } from '../types/models';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthState {
+    isInitializing: boolean;
     isLoading: boolean;
     error: string | null;
     verificationId: string | null;
     phoneNumber: string | null;
     customerName: string | null;
+    customerAddress: string | null;
+    profilePhotoUri: string | null;
     user: User | null;
 
     tempUid: string | null;
 
     // Actions
     setName: (name: string) => void;
+    setAddress: (address: string) => void;
+    setProfilePhoto: (uri: string) => void;
     sendOtp: (phoneNumber: string) => Promise<void>;
     verifyOtp: (otp: string) => Promise<boolean>;
-    completeRegistration: (name: string, dob: string) => Promise<void>;
+    completeRegistration: () => Promise<void>;
     adminLogin: (pin: string) => Promise<boolean>;
     signOut: () => Promise<void>;
+    updateProfile: (updates: Partial<User>) => Promise<void>;
     checkAuthState: () => () => void; // Returns unsubscribe function
+    loadSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
+    isInitializing: true,
     isLoading: false,
     error: null,
     verificationId: null,
     phoneNumber: null,
     customerName: null,
+    customerAddress: null,
+    profilePhotoUri: null,
     tempUid: null,
     user: null,
 
     setName: (name) => set({ customerName: name }),
+    setAddress: (address) => set({ customerAddress: address }),
+    setProfilePhoto: (uri) => set({ profilePhotoUri: uri }),
 
     sendOtp: async (phone) => {
         set({ isLoading: true, error: null });
         try {
-            // Simulated OTP for Expo Go compatibility without native modules
-            // (In a production bare workflow app, you would use RecaptchaVerifier or native Firebase)
             await new Promise(resolve => setTimeout(resolve, 800));
-
             set({
                 isLoading: false,
                 verificationId: 'mock-verification-id',
@@ -63,16 +74,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         set({ isLoading: true, error: null });
         try {
-            // Because Anonymous Auth is disabled on the Firebase project, simulate a deterministic UID
             const mockUid = `user_${get().phoneNumber?.replace(/\D/g, '') || Math.random().toString(36).substring(2, 10)}`;
-            console.log('Verifying with Mock UID:', mockUid);
-
-            // Check user in Firestore
             const userRef = doc(db, 'users', mockUid);
             const docSnap = await getDoc(userRef);
 
             if (docSnap.exists()) {
                 const existingData = docSnap.data() as User;
+                await AsyncStorage.setItem('nightflame_session', JSON.stringify(existingData));
                 set({ isLoading: false, user: existingData, error: null });
                 return false; // Not a new user
             } else {
@@ -80,20 +88,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 return true; // Is a new user
             }
         } catch (e: any) {
-            let userFriendlyError = e.message || 'Verification Error';
-
-            // Helpful tip for the "Insufficient Permissions" error
-            if (e.code === 'permission-denied') {
-                userFriendlyError = 'Firestore Error: Please set your Firebase Rules to "allow read, write: if true;" in the console.';
-            }
-
-            set({ isLoading: false, error: userFriendlyError });
-            throw new Error(userFriendlyError);
+            set({ isLoading: false, error: e.message || 'Verification Error' });
+            throw new Error(e.message);
         }
     },
 
-    completeRegistration: async (name, dob) => {
-        const { tempUid, phoneNumber } = get();
+    completeRegistration: async () => {
+        const { tempUid, phoneNumber, customerName, customerAddress, profilePhotoUri } = get();
         if (!tempUid) return;
 
         set({ isLoading: true, error: null });
@@ -101,14 +102,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const userRef = doc(db, 'users', tempUid);
             const userData: User = {
                 userId: tempUid,
-                name: name,
-                phoneNumber: `+ 91${phoneNumber} `,
-                dob: dob,
+                name: customerName || 'User',
+                phoneNumber: `+91 ${phoneNumber}`,
+                address: customerAddress || '',
+                profilePhotoUri: profilePhotoUri || undefined,
                 createdAt: Date.now(),
-                role: 'customer'
+                role: UserRole.CUSTOMER
             };
             await setDoc(userRef, userData);
-            set({ isLoading: false, user: userData, tempUid: null, error: null });
+            await AsyncStorage.setItem('nightflame_session', JSON.stringify(userData));
+            set({
+                isLoading: false,
+                user: userData,
+                tempUid: null,
+                customerName: null,
+                customerAddress: null,
+                profilePhotoUri: null,
+                error: null
+            });
         } catch {
             set({ isLoading: false, error: 'Registration failed.' });
         }
@@ -124,15 +135,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await new Promise(resolve => setTimeout(resolve, 500));
 
         if (pin === ADMIN_PIN) {
+            const adminUser = {
+                userId: 'admin-local',
+                name: 'Admin',
+                phoneNumber: '',
+                address: 'Shop Manager',
+                createdAt: Date.now(),
+                role: UserRole.ADMIN
+            };
+            await AsyncStorage.setItem('nightflame_session', JSON.stringify(adminUser));
             set({
                 isLoading: false,
-                user: {
-                    userId: 'admin-local',
-                    name: 'Admin',
-                    phoneNumber: '',
-                    createdAt: Date.now(),
-                    role: 'admin'
-                },
+                user: adminUser,
                 error: null
             });
             return true;
@@ -146,9 +160,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: true });
         try {
             await firebaseSignOut(auth);
+            await AsyncStorage.removeItem('nightflame_session');
             set({ user: null, verificationId: null, isLoading: false, error: null });
         } catch {
             set({ isLoading: false });
+        }
+    },
+
+    updateProfile: async (updates) => {
+        const { user } = get();
+        if (!user) return;
+        try {
+            const updatedUser = { ...user, ...updates };
+            const userRef = doc(db, 'users', user.userId);
+            await setDoc(userRef, updatedUser, { merge: true });
+            set({ user: updatedUser });
+        } catch (e: any) {
+            console.error('Update profile error:', e);
         }
     },
 
@@ -159,18 +187,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
                     if (docSnap.exists()) {
                         set({ user: docSnap.data() as User });
-                    } else {
-                        // Handle edge case where user is in Auth but not Firestore
-                        set({ user: null });
                     }
                 } catch (e) {
                     console.error('Error fetching user data from Firestore', e);
                 }
             } else {
+                // Only clear if no manual session exists
+                const { user } = get();
+                if (user && (user.userId === 'admin-local' || user.userId.startsWith('user_'))) {
+                    // It's a manual/demo session, keep it
+                    return;
+                }
                 set({ user: null });
             }
         });
 
         return unsubscribe;
+    },
+
+    loadSession: async () => {
+        try {
+            const session = await AsyncStorage.getItem('nightflame_session');
+            if (session) {
+                set({ user: JSON.parse(session), isInitializing: false });
+            } else {
+                set({ isInitializing: false });
+            }
+        } catch (e) {
+            console.error('Session load error', e);
+            set({ isInitializing: false });
+        }
     }
 }));
+

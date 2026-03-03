@@ -36,6 +36,7 @@ export const AppStrings = {
     emptyCart: 'Your cart is empty',
     total: 'Total',
     placeOrder: 'Place Order',
+    payAtPickup: 'Pay at Pickup',
     pickupTime: 'Pickup Time',
     selectPickupTime: 'Select Pickup Time',
 
@@ -71,3 +72,4 @@ export const AppStrings = {
     cancel: 'Cancel',
     updateStatus: 'Update Status',
 };
+

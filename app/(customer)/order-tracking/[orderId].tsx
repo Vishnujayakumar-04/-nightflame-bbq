@@ -3,9 +3,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { OrderStatus, CartItem } from '../../../types/models';
+import {  CartItem } from '../../../types/models';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useOrderStore } from '../../../store/orderStore';
+import { OrderStatus, PaymentStatus } from '../../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
 const formatTime = (timestamp: number) => {
@@ -17,10 +18,10 @@ const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase
 const OrderProgressStepper = ({ currentStatus }: { currentStatus: OrderStatus }) => {
     const getCurrentStepIndex = () => {
         switch (currentStatus) {
-            case OrderStatus.pending: return 0;
-            case OrderStatus.preparing: return 1;
-            case OrderStatus.ready: return 2;
-            case OrderStatus.completed: return 3;
+            case OrderStatus.PENDING: return 0;
+            case OrderStatus.PREPARING: return 1;
+            case OrderStatus.READY: return 2;
+            case OrderStatus.COMPLETED: return 3;
             default: return 0;
         }
     };
@@ -176,16 +177,16 @@ export default function OrderTrackingScreen() {
                                 <Text style={styles.paymentLabel}>Payment Status</Text>
                                 <Text style={[
                                     styles.paymentValue,
-                                    { color: order.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }
+                                    { color: order.paymentStatus === PaymentStatus.PAID ? '#4CAF50' : '#EF5350' }
                                 ]}>
-                                    {order.paymentStatus} {order.paymentStatus === 'Paid' ? `(${order.paymentMethod})` : ''}
+                                    {order.paymentStatus} {order.paymentStatus === PaymentStatus.PAID ? `(${order.paymentMethod})` : ''}
                                 </Text>
                             </View>
                         )}
                     </View>
 
                     {/* Pay Now QR Code */}
-                    {order.paymentStatus !== 'Paid' && (
+                    {order.paymentStatus !== PaymentStatus.PAID && (
                         <View style={[styles.card, { alignItems: 'center' }]}>
                             <Text style={styles.qrTitle}>Complete Payment</Text>
                             <Text style={styles.qrSubtitle}>

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, Switch, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,14 +34,23 @@ export default function MenuFormScreen() {
                 setDescription(item.description);
                 setPrice(item.price.toString());
                 setPreparationTime(item.preparationTime?.toString() || '15');
-                setImageUrl(item.imageUrl);
+                setImageUrl(item.imageUrl || '');
                 setAvailable(item.available);
             }
         }
     }, [isEditing, itemId, menuItems]);
 
     const handleSave = async () => {
-        if (!name.trim() || !price.trim()) return;
+        if (!name.trim() || !price.trim()) {
+            Alert.alert('Validation Error', 'Item Name and Price are required.');
+            return;
+        }
+
+        const pt = parseInt(preparationTime, 10);
+        if (isNaN(pt) || pt <= 0) {
+            Alert.alert('Validation Error', 'Preparation Time must be a valid number greater than 0.');
+            return;
+        }
 
         setSaving(true);
         try {
@@ -49,7 +58,7 @@ export default function MenuFormScreen() {
                 name,
                 description,
                 price: parseFloat(price),
-                preparationTime: parseInt(preparationTime, 10) || 15,
+                preparationTime: pt,
                 imageUrl,
                 available,
                 category: 'Main' // default category for now

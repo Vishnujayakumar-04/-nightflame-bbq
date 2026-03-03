@@ -25,7 +25,9 @@ export default function RootLayout() {
     }, [loaded, error]);
 
     useEffect(() => {
-        const unsubscribe = useAuthStore.getState().checkAuthState();
+        const store = useAuthStore.getState();
+        store.loadSession();
+        const unsubscribe = store.checkAuthState();
         return () => unsubscribe();
     }, []);
 

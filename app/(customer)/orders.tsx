@@ -5,10 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Order, OrderStatus } from '../../types/models';
+import { Order} from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useOrderStore } from '../../store/orderStore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { OrderStatus, PaymentStatus } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
 const formatTime = (timestamp: number) => {
@@ -25,11 +26,11 @@ export default function MyOrdersScreen() {
     const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
 
     const activeOrders = useMemo(() => {
-        return orders.filter(o => o.status !== OrderStatus.completed);
+        return orders.filter(o => o.status !== OrderStatus.COMPLETED);
     }, [orders]);
 
     const pastOrders = useMemo(() => {
-        return orders.filter(o => o.status === OrderStatus.completed);
+        return orders.filter(o => o.status === OrderStatus.COMPLETED);
     }, [orders]);
 
     const displayOrders = activeTab === 'active' ? activeOrders : pastOrders;
@@ -84,7 +85,7 @@ export default function MyOrdersScreen() {
                             {item.paymentStatus && (
                                 <Text style={[
                                     styles.paymentBadge,
-                                    { color: item.paymentStatus === 'Paid' ? '#4CAF50' : '#EF5350' }
+                                    { color: item.paymentStatus === PaymentStatus.PAID ? '#4CAF50' : '#EF5350' }
                                 ]}>
                                     {item.paymentStatus}
                                 </Text>

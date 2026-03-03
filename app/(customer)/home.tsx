@@ -1,20 +1,54 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useCartStore } from '../../store/cartStore';
 import { useMenuStore } from '../../store/menuStore';
 import { useAuthStore } from '../../store/authStore';
 import { useShopStore } from '../../store/shopStore';
+import { getMenuItemImage } from '../../constants/menuImages';
+import { MenuItem } from '../../types/models';
+
+const { width } = Dimensions.get('window');
 
 const SHOP_ADDRESS = "Villianur Main Rd, beside of kv.tex, Natesan Nagar, Puducherry, 605005";
 const SHOP_MAPS_URL = "https://maps.app.goo.gl/FHdBWbXMXDW3pe4M6";
 
 const formatCurrency = (amount: number) => `₹${amount}`;
+
+// Marquee Component
+const MarqueeText = () => {
+    const translateX = useSharedValue(width);
+
+    useEffect(() => {
+        translateX.value = withRepeat(
+            withTiming(-width * 2, {
+                duration: 15000,
+                easing: Easing.linear,
+            }),
+            -1,
+            false
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: translateX.value }],
+    }));
+
+    return (
+        <View style={styles.marqueeContainer}>
+            <Animated.View style={[styles.marqueeInner, animatedStyle]}>
+                <Text style={styles.marqueeText}>
+                    🔥 NEW: Peri Peri Wings now available! • 📢 FLAT 10% OFF on all Combos! • 🍗 Try our signature BBQ Grilled Bone-In Chicken! • 🔥 NEW: Peri Peri Wings now available! • 📢 FLAT 10% OFF on all Combos!
+                </Text>
+            </Animated.View>
+        </View>
+    );
+};
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -34,10 +68,14 @@ export default function HomeScreen() {
 
 
     const userName = user?.name || 'Customer';
-    const popularItems = menuItems.filter(item => item.available).slice(0, 6);
+    const popularItems = menuItems.filter((item: MenuItem) => item.available).slice(0, 6);
 
-    // Pick a featured item for "Today's Special"
-    const specialItem = menuItems.find(item => item.isCombo && item.available) || menuItems[0];
+    // Pick the admin-set special or fall back to first combo, then first item
+    const specialItem = (status?.todaySpecialItemId
+        ? menuItems.find((item: MenuItem) => item.itemId === status.todaySpecialItemId && item.available)
+        : null)
+        || menuItems.find((item: MenuItem) => item.isCombo && item.available)
+        || menuItems[0];
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -45,16 +83,7 @@ export default function HomeScreen() {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <View>
-                        <Text style={styles.welcomeText}>Welcome to NightFlame 🔥</Text>
-                        <Text style={styles.userName}>{userName}</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(customer)/profile')}
-                        style={styles.profileButton}
-                    >
-                        <Ionicons name="person-outline" size={24} color="#A5A2A2" />
-                    </TouchableOpacity>
+                    <Text style={styles.userName}>{userName}</Text>
                 </View>
 
                 {/* Status Board */}
@@ -76,7 +105,9 @@ export default function HomeScreen() {
                 {/* Location Bar */}
                 <TouchableOpacity
                     style={styles.locationBar}
-                    onPress={() => { /* Opne Maps link */ }}
+                    onPress={() => {
+                        Linking.openURL(SHOP_MAPS_URL).catch(() => { });
+                    }}
                 >
                     <View style={styles.locationIcon}>
                         <Ionicons name="location" size={16} color="#FF6A00" />
@@ -92,33 +123,48 @@ export default function HomeScreen() {
                 {specialItem && (
                     <Animated.View entering={FadeInDown.delay(100).duration(600)}>
                         <TouchableOpacity
-                            style={styles.specialBanner}
+                            style={[styles.specialBanner, !status?.isOpen && { opacity: 0.8 }]}
                             onPress={() => router.push('/(customer)/menu')}
-                            activeOpacity={0.9}
+                            activeOpacity={status?.isOpen ? 0.9 : 1}
+                            disabled={!status?.isOpen}
                         >
-                            {specialItem.imageUrl ? (
-                                <Image
-                                    source={{ uri: specialItem.imageUrl }}
-                                    style={styles.specialImage}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />
-                            )}
+                            {(() => {
+                                const localImg = getMenuItemImage(specialItem.name);
+                                if (specialItem.imageUrl) {
+                                    return <Image source={{ uri: specialItem.imageUrl }} style={styles.specialImage} resizeMode="cover" />;
+                                } else if (localImg) {
+                                    return <Image source={localImg} style={styles.specialImage} resizeMode="cover" />;
+                                } else {
+                                    return <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />;
+                                }
+                            })()}
                             <View style={styles.specialOverlay}>
                                 <View style={styles.specialBadge}>
                                     <Text style={styles.specialBadgeText}>🔥 TODAY'S SPECIAL</Text>
                                 </View>
                                 <Text style={styles.specialTitle}>{specialItem.name}</Text>
                                 <TouchableOpacity
-                                    style={styles.orderNowBtn}
+                                    style={[styles.orderNowBtn, !status?.isOpen && styles.orderNowBtnDisabled]}
                                     onPress={() => {
+                                        if (!status?.isOpen) return;
                                         addItem(specialItem);
                                         router.push('/(customer)/cart');
                                     }}
+                                    disabled={!status?.isOpen}
                                 >
-                                    <Text style={styles.orderNowText}>Order Now</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        {!status?.isOpen && <Ionicons name="lock-closed" size={14} color="#FFFFFF" />}
+                                        <Text style={styles.orderNowText}>
+                                            {status?.isOpen ? 'Order Now' : 'Store Closed'}
+                                        </Text>
+                                    </View>
                                 </TouchableOpacity>
+                                {!status?.isOpen && (
+                                    <View style={styles.closedOverlayLabel}>
+                                        <Text style={styles.closedOverlayText}>CURRENTLY CLOSED</Text>
+                                        <Text style={styles.opensAtText}>Opens at {status?.openTime || '6:00 PM'}</Text>
+                                    </View>
+                                )}
                             </View>
                         </TouchableOpacity>
                     </Animated.View>
@@ -163,31 +209,54 @@ export default function HomeScreen() {
                         {popularItems.map((item) => (
                             <TouchableOpacity
                                 key={item.itemId}
-                                style={styles.popularCardContainer}
-                                onPress={() => router.push('/(customer)/menu')}
-                                activeOpacity={0.85}
+                                style={[styles.popularCardContainer, !status?.isOpen && { opacity: 0.85 }]}
+                                onPress={() => status?.isOpen && router.push('/(customer)/menu')}
+                                activeOpacity={status?.isOpen ? 0.85 : 1}
+                                disabled={!status?.isOpen}
                             >
                                 <View style={styles.popularCardOuter}>
-                                    {item.imageUrl ? (
-                                        <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />
-                                    ) : (
-                                        <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
-                                            <Ionicons name="restaurant" size={24} color="#555" />
-                                        </View>
-                                    )}
+                                    {(() => {
+                                        const localImg = getMenuItemImage(item.name);
+                                        if (item.imageUrl) {
+                                            return <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />;
+                                        } else if (localImg) {
+                                            return <Image source={localImg} style={styles.popularImageTop} resizeMode="cover" />;
+                                        } else {
+                                            return (
+                                                <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
+                                                    <Ionicons name="restaurant" size={24} color="#555" />
+                                                </View>
+                                            );
+                                        }
+                                    })()}
                                     <View style={styles.popularInfoContainer}>
                                         <Text style={styles.popularNameCard} numberOfLines={2}>{item.name}</Text>
                                         <Text style={styles.popularPriceCard}>{formatCurrency(item.price)}</Text>
                                         <View style={styles.orderButtonWrap}>
-                                            <LinearGradient colors={['#F36D25', '#E5580F']} style={styles.orderGradientBtn}>
-                                                <Text style={styles.orderBtnText}>Order Now</Text>
+                                            <LinearGradient
+                                                colors={status?.isOpen ? ['#F36D25', '#E5580F'] : ['#4A4A4A', '#3A3A3A']}
+                                                style={styles.orderGradientBtn}
+                                            >
+                                                <Text style={styles.orderBtnText}>
+                                                    {status?.isOpen ? 'Order Now' : 'Closed'}
+                                                </Text>
                                             </LinearGradient>
                                         </View>
+                                        {!status?.isOpen && (
+                                            <View style={styles.popularClosedBadge}>
+                                                <Text style={styles.popularClosedBadgeText}>CLOSED</Text>
+                                            </View>
+                                        )}
                                     </View>
                                 </View>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
+                </Animated.View>
+
+                {/* Marquee Moved Here */}
+                <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+                    <MarqueeText />
                 </Animated.View>
 
             </ScrollView>
@@ -208,25 +277,12 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: 16,
     },
-    welcomeText: {
-        color: '#A5A2A2',
-        fontSize: 14,
-        fontFamily: 'Inter_400Regular',
-    },
     userName: {
         color: '#FFFFFF',
-        fontSize: 22,
+        fontSize: 24,
         fontFamily: 'Poppins_700Bold',
-        marginTop: 2,
     },
-    profileButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        backgroundColor: '#252121',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+
     locationBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -257,22 +313,22 @@ const styles = StyleSheet.create({
     },
     statusBoardWrapper: {
         paddingHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 20,
         alignItems: 'center'
     },
     statusSign: {
         width: '100%',
         backgroundColor: '#4CAF50',
-        borderRadius: 20,
-        padding: 24,
+        borderRadius: 16,
+        padding: 16,
         alignItems: 'center',
-        borderWidth: 4,
+        borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.1)',
-        elevation: 12,
+        elevation: 8,
         shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
     },
     statusSignClosed: {
         backgroundColor: '#EF5350',
@@ -280,29 +336,29 @@ const styles = StyleSheet.create({
     },
     signChain: {
         position: 'absolute',
-        top: -12,
-        width: '60%',
-        height: 12,
+        top: -10,
+        width: '50%',
+        height: 10,
         borderWidth: 2,
         borderColor: '#353030',
         borderBottomWidth: 0,
-        borderRadius: 10,
+        borderRadius: 8,
     },
     signContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginBottom: 8,
+        gap: 8,
+        marginBottom: 4,
     },
     statusLabelText: {
         color: '#FFFFFF',
-        fontSize: 28,
+        fontSize: 22,
         fontFamily: 'Poppins_700Bold',
         letterSpacing: 2,
     },
     timeLabelText: {
         color: 'rgba(255,255,255,0.9)',
-        fontSize: 15,
+        fontSize: 13,
         fontFamily: 'Inter_600SemiBold',
         textAlign: 'center',
     },
@@ -472,5 +528,62 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 11,
         fontFamily: 'Inter_600SemiBold',
+    },
+    marqueeContainer: {
+        height: 36,
+        backgroundColor: '#252121',
+        marginVertical: 10,
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    marqueeInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    marqueeText: {
+        color: '#FF6A00',
+        fontSize: 14,
+        fontFamily: 'Inter_600SemiBold',
+        letterSpacing: 0.5,
+    },
+    orderNowBtnDisabled: {
+        backgroundColor: '#4A4A4A',
+    },
+    closedOverlayLabel: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        backgroundColor: 'rgba(239, 83, 80, 0.9)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    closedOverlayText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontFamily: 'Inter_700Bold',
+        letterSpacing: 1,
+        textAlign: 'center',
+    },
+    opensAtText: {
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontSize: 8,
+        fontFamily: 'Inter_600SemiBold',
+        marginTop: 2,
+        textAlign: 'center',
+    },
+    popularClosedBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: 'rgba(239, 83, 80, 0.9)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    popularClosedBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 8,
+        fontFamily: 'Inter_800ExtraBold',
     }
 });

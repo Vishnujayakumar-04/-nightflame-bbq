@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
-import { OrderStatus } from '../../types/models';
+
+import { OrderStatus } from '../../constants/enums';
 
 interface StatusBadgeProps {
     status: OrderStatus;
@@ -9,13 +10,13 @@ interface StatusBadgeProps {
 export const StatusBadge = ({ status, large = false }: StatusBadgeProps) => {
     const getStatusConfig = () => {
         switch (status) {
-            case OrderStatus.pending:
+            case OrderStatus.PENDING:
                 return { color: '#F59E0B', label: 'Pending', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)' };
-            case OrderStatus.preparing:
+            case OrderStatus.PREPARING:
                 return { color: '#3B82F6', label: 'Preparing', bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)' };
-            case OrderStatus.ready:
+            case OrderStatus.READY:
                 return { color: '#10B981', label: 'Ready for Pickup', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)' };
-            case OrderStatus.completed:
+            case OrderStatus.COMPLETED:
                 return { color: '#6B7280', label: 'Completed', bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)' };
             default:
                 return { color: '#6B7280', label: 'Unknown', bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)' };

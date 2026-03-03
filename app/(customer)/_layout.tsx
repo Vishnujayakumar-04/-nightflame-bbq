@@ -20,18 +20,17 @@ export default function CustomerTabsLayout() {
                 tabBarStyle: {
                     position: 'absolute',
                     backgroundColor: '#F36D25',
-                    bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 10, 20) : 25,
-                    left: 20,
-                    right: 20,
-                    height: 65,
-                    borderRadius: 35,
+                    bottom: Platform.OS === 'android' ? 12 : 30,
+                    marginHorizontal: 12, // More horizontal space
+                    height: 60, // Slightly shorter
+                    borderRadius: 30,
                     borderTopWidth: 0,
-                    elevation: 8,
+                    elevation: 12, // Higher elevation
                     shadowColor: '#F36D25',
-                    shadowOffset: { width: 0, height: 8 },
+                    shadowOffset: { width: 0, height: 6 },
                     shadowOpacity: 0.4,
-                    shadowRadius: 12,
-                    paddingHorizontal: 10,
+                    shadowRadius: 10,
+                    paddingBottom: 0,
                 },
                 tabBarActiveTintColor: '#F36D25',
                 tabBarInactiveTintColor: '#FFFFFF',
@@ -43,7 +42,7 @@ export default function CustomerTabsLayout() {
                     title: 'Home',
                     tabBarIcon: ({ focused }) => (
                         <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                            <Ionicons name={focused ? "home" : "home-outline"} size={26} color={focused ? '#F36D25' : '#FFFFFF'} />
+                            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={focused ? '#F36D25' : '#FFFFFF'} />
                         </View>
                     ),
                 }}
@@ -54,7 +53,7 @@ export default function CustomerTabsLayout() {
                     title: 'Menu',
                     tabBarIcon: ({ focused }) => (
                         <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                            <Ionicons name={focused ? "heart" : "heart-outline"} size={26} color={focused ? '#F36D25' : '#FFFFFF'} />
+                            <Ionicons name={focused ? "restaurant" : "restaurant-outline"} size={22} color={focused ? '#F36D25' : '#FFFFFF'} />
                         </View>
                     ),
                 }}
@@ -65,7 +64,7 @@ export default function CustomerTabsLayout() {
                     title: 'Cart',
                     tabBarIcon: ({ focused }) => (
                         <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                            <Ionicons name={focused ? "cart" : "cart-outline"} size={26} color={focused ? '#F36D25' : '#FFFFFF'} />
+                            <Ionicons name={focused ? "cart" : "cart-outline"} size={22} color={focused ? '#F36D25' : '#FFFFFF'} />
                         </View>
                     ),
                 }}
@@ -76,7 +75,7 @@ export default function CustomerTabsLayout() {
                     title: 'Orders',
                     tabBarIcon: ({ focused }) => (
                         <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                            <Ionicons name={focused ? "person" : "person-outline"} size={26} color={focused ? '#F36D25' : '#FFFFFF'} />
+                            <Ionicons name={focused ? "receipt" : "receipt-outline"} size={22} color={focused ? '#F36D25' : '#FFFFFF'} />
                         </View>
                     ),
                 }}
@@ -84,17 +83,22 @@ export default function CustomerTabsLayout() {
             <Tabs.Screen
                 name="profile"
                 options={{
-                    href: null, // Hide from tab bar but keep accessible
+                    title: 'Profile',
+                    tabBarIcon: ({ focused }) => (
+                        <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
+                            <Ionicons name={focused ? "person" : "person-outline"} size={22} color={focused ? '#F36D25' : '#FFFFFF'} />
+                        </View>
+                    ),
                 }}
             />
             <Tabs.Screen
-                name="order-confirmation"
+                name="order-confirmation/[orderId]"
                 options={{
                     href: null,
                 }}
             />
             <Tabs.Screen
-                name="order-tracking"
+                name="order-tracking/[orderId]"
                 options={{
                     href: null,
                 }}
@@ -106,24 +110,24 @@ export default function CustomerTabsLayout() {
 const styles = StyleSheet.create({
     activeIconContainer: {
         backgroundColor: '#FFFFFF',
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44, // Slightly wider
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        top: -6, // Causes it to float slightly up, forming a nice semi-circle pop on Android/iOS
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        top: -4,
         borderWidth: 1,
         borderColor: 'rgba(243, 109, 37, 0.2)'
     },
     inactiveIconContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        width: 48,
-        height: 48,
+        width: 40,
+        height: 40,
     }
 });

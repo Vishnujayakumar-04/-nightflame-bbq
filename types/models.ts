@@ -17,19 +17,16 @@ export interface ShopStatus {
     openTime: string; // e.g. "06:00 PM"
     closeTime: string; // e.g. "11:00 PM"
     message?: string; // Custom message for closed status
+    todaySpecialItemId?: string; // Admin-set daily special menu item ID
     lastUpdated: number;
 }
+
+import { OrderStatus, PaymentStatus, PaymentType, PaymentMethod, UserRole } from '../constants/enums';
 
 export interface CartItem {
     menuItem: MenuItem;
     quantity: number;
-}
-
-export enum OrderStatus {
-    pending = 'pending',
-    preparing = 'preparing',
-    ready = 'ready',
-    completed = 'completed'
+    specialInstructions?: string;
 }
 
 export interface Order {
@@ -39,13 +36,22 @@ export interface Order {
     items: CartItem[];
     totalAmount: number;
     status: OrderStatus;
-    paymentStatus: 'Unpaid' | 'Paid';
-    paymentMethod: 'Cash' | 'UPI' | 'None';
-    transactionId?: string; // Required if UPI & Paid
+
+    // Hardened Payment Schema
+    paymentType: PaymentType;
+    paymentStatus: PaymentStatus;
+    paymentMethod: PaymentMethod | null;
+    transactionId?: string | null; // Required if UPI & Paid
+    paidAt?: number | null;
+    notificationShown: boolean;
+
+    // Safety Lock
+    isLocked: boolean;
+    lockedBy: string | null;
+
     pickupTime: number; // timestamp
     estimatedPickupTime?: number;
     timestamp: number; // creation timestamp
-    paidAt?: number;
 }
 
 export interface User {
@@ -53,6 +59,9 @@ export interface User {
     name: string;
     phoneNumber: string;
     dob?: string;
+    address: string;
+    profilePhotoUri?: string;
     createdAt: number;
-    role: 'customer' | 'admin';
+    role: UserRole;
 }
+

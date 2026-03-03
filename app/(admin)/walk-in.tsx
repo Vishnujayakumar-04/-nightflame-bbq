@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MenuItem } from '../../types/models';
 import { useMenuStore } from '../../store/menuStore';
 import { useOrderStore } from '../../store/orderStore';
+import { PaymentType, PaymentMethod, PaymentStatus } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 
@@ -76,16 +77,21 @@ export default function WalkInOrderScreen() {
         setIsPlacing(true);
         try {
             await placeOrder({
-                userId: null as any,
+                userId: 'walk-in', // Explicit identifier for reporting
                 customerName: customerName.trim() || 'Walk-in Customer',
                 items: selectedItems,
                 totalAmount,
-                pickupTime: Date.now() + 20 * 60000,
-                estimatedPickupTime: Date.now() + 20 * 60000,
-                paymentStatus: 'Unpaid',
-                paymentMethod: 'Cash'
+                pickupTime: Date.now() + 15 * 60000,
+                // estimatedPickupTime is calculated automatically in store
+                paymentType: PaymentType.PAY_NOW,
+                paymentStatus: PaymentStatus.PAID, // Walk-ins pay at counter
+                paymentMethod: PaymentMethod.CASH,
+                paidAt: Date.now(),
+                notificationShown: true,
+                isLocked: false,
+                lockedBy: null
             });
-            Alert.alert('Success', 'Walk-in order placed!', [
+            Alert.alert('Success', 'Walk-in order captured and marked as Paid!', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
         } catch {

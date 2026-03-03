@@ -3,7 +3,7 @@ import { CartItem, MenuItem } from '../types/models';
 
 interface CartState {
     items: CartItem[];
-    addItem: (item: MenuItem) => void;
+    addItem: (item: MenuItem, specialInstructions?: string) => void;
     removeItem: (itemId: string) => void;
     incrementQuantity: (itemId: string) => void;
     decrementQuantity: (itemId: string) => void;
@@ -16,19 +16,19 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
     items: [],
 
-    addItem: (menuItem: MenuItem) => {
+    addItem: (menuItem: MenuItem, specialInstructions?: string) => {
         set((state) => {
             const existingItem = state.items.find((i) => i.menuItem.itemId === menuItem.itemId);
             if (existingItem) {
                 return {
                     items: state.items.map((i) =>
                         i.menuItem.itemId === menuItem.itemId
-                            ? { ...i, quantity: i.quantity + 1 }
+                            ? { ...i, quantity: i.quantity + 1, specialInstructions: specialInstructions || i.specialInstructions }
                             : i
                     ),
                 };
             }
-            return { items: [...state.items, { menuItem, quantity: 1 }] };
+            return { items: [...state.items, { menuItem, quantity: 1, specialInstructions }] };
         });
     },
 
@@ -80,3 +80,4 @@ export const useCartStore = create<CartState>((set, get) => ({
         return item ? item.quantity : 0;
     },
 }));
+
