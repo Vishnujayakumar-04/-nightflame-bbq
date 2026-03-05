@@ -129,7 +129,7 @@ export default function MyOrdersScreen() {
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#FF6A00" />
                     </View>
-                ) : true || displayOrders.length === 0 ? (
+                ) : displayOrders.length === 0 ? (
                     renderEmptyState()
                 ) : (
                     <FlatList

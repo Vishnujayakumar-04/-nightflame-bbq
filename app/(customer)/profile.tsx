@@ -2,14 +2,14 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Image, Mod
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
-import { useOrderStore } from '../../store/orderStore';
-import { OrderStatus } from '../../constants/enums';
+
+
 
 const SHOP_PHONE = '+919876543210';
 const SHOP_EMAIL = 'nightflamebbq@example.com';
@@ -18,7 +18,6 @@ function ProfileScreen() {
     const router = useRouter();
     const clearCart = useCartStore(state => state.clearCart);
     const { user, signOut, updateProfile } = useAuthStore();
-    const { orders } = useOrderStore();
     const [isSaving, setIsSaving] = useState(false);
     const [showPhotoOptions, setShowPhotoOptions] = useState(false);
     const [showMenu, setShowMenu] = useState(false);

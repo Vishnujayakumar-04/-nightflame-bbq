@@ -1,9 +1,9 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, runOnJS } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withTiming, Easing, withDelay, runOnJS } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useCartStore } from '../../store/cartStore';
@@ -13,7 +13,7 @@ import { useShopStore } from '../../store/shopStore';
 import { getMenuItemImage } from '../../constants/menuImages';
 import { MenuItem } from '../../types/models';
 
-const { width } = Dimensions.get('window');
+
 
 const SHOP_ADDRESS = "Villianur Main Rd, beside of kv.tex, Natesan Nagar, Puducherry, 605005";
 const SHOP_MAPS_URL = "https://maps.app.goo.gl/FHdBWbXMXDW3pe4M6";

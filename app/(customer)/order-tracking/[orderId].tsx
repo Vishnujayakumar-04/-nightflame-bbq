@@ -116,9 +116,8 @@ export default function OrderTrackingScreen() {
     const { orders } = useOrderStore();
     const order = orders.find(o => o.orderId === orderId);
 
-    // Generate UPI URI
-    const upiString = order ? encodeURIComponent(`upi://pay?pa=shop@upi&pn=NightFlame%20BBQ&am=${order.totalAmount}&cu=INR&tn=Order%20${order.orderId}`) : '';
-    const qrUrl = order ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${upiString}` : '';
+
+
 
     const renderHeader = () => (
         <View style={styles.header}>

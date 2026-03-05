@@ -42,7 +42,7 @@ export default function AdminOrdersScreen() {
         return unsub;
     }, []);
 
-    const handleStatusUpdate = (orderId: string, currentStatus: OrderStatus) => {
+    const handleStatusUpdate = (orderId: string) => {
         const order = orders.find(o => o.orderId === orderId);
         if (!order) return;
         setSelectedOrderForAction(order);
@@ -76,10 +76,7 @@ export default function AdminOrdersScreen() {
         return orders.filter(o => o.status !== OrderStatus.COMPLETED);
     }, [orders]);
 
-    const filteredOrders = useMemo(() => {
-        if (activeFilter === 'All') return orders;
-        return orders.filter(o => o.status === activeFilter.toLowerCase());
-    }, [orders, activeFilter]);
+
 
     const getFilterCount = (filter: FilterType) => {
         if (filter === 'All') return orders.length;
@@ -92,7 +89,7 @@ export default function AdminOrdersScreen() {
             <TouchableOpacity
                 style={styles.orderCard}
                 activeOpacity={0.85}
-                onPress={() => handleStatusUpdate(item.orderId, item.status)}
+                onPress={() => handleStatusUpdate(item.orderId)}
             >
                 <View style={styles.cardHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

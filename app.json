@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "nightflame-expo",
-    "slug": "nightflame-expo",
+    "slug": "nightflame-bbq",
     "scheme": "nightflame",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,10 +27,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
-      "navigationBar": {
-        "backgroundColor": "#121212",
-        "barStyle": "light-content"
-      }
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -48,6 +47,13 @@
           "cameraPermission": "The app accesses your camera to let you take a profile photo."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "24508249-a1f4-4dbb-957c-4839bb6e566e"
+      }
+    },
+    "owner": "trekbuddy"
   }
 }

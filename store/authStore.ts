@@ -91,7 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
         } catch (e: any) {
             set({ isLoading: false, error: e.message || 'Verification Error' });
-            throw new Error(e.message);
+            throw new Error(e.message, { cause: e });
         }
     },
 

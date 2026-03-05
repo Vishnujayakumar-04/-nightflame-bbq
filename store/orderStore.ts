@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db } from '../firebaseConfig';
-import { collection, doc, query, orderBy, where, onSnapshot, setDoc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, where, onSnapshot, updateDoc, runTransaction } from 'firebase/firestore';
 import { Order } from '../types/models';
 import { useAuthStore } from './authStore';
 import { OrderStatus, PaymentStatus, PaymentMethod, UserRole } from '../constants/enums';
@@ -122,7 +122,7 @@ export const useOrderStore = create<OrderState>((set) => ({
             return result.orderId;
         } catch (e: any) {
             console.error("Failed to place order", e);
-            throw new Error(e.message || "Failed to place order.");
+            throw new Error(e.message || "Failed to place order.", { cause: e });
         }
     },
 

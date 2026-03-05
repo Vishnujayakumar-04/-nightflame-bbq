@@ -13,7 +13,7 @@ export default function NotificationPermissionScreen() {
     const requestPermission = async () => {
         try {
             await Notifications.requestPermissionsAsync();
-        } catch (e) {
+        } catch {
             // Silently handle — permission may not be available
         }
         router.replace('/(customer)/home');

@@ -3,7 +3,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, Pressable } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Order } from '../types/models';
-import { Button } from './ui/Button';
+
 import { OrderStatus, PaymentStatus } from '../constants/enums';
 
 interface AdminActionModalProps {

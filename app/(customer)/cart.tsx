@@ -13,7 +13,7 @@ import { useShopStore } from '../../store/shopStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PaymentQRModal } from '../../components/PaymentQRModal';
 import { PaymentSelectionModal } from '../../components/PaymentSelectionModal';
-import { Button } from '../../components/ui/Button';
+
 import { PaymentType, PaymentStatus, PaymentMethod } from '../../constants/enums';
 import { getMenuItemImage } from '../../constants/menuImages';
 
@@ -55,11 +55,13 @@ export default function CartScreen() {
             if (!timeStr) return 0;
             try {
                 const [time, modifier] = timeStr.split(' ');
-                let [hours, minutes] = time.split(':').map(Number);
+                const parts = time.split(':').map(Number);
+                let hours = parts[0];
+                const minutes = parts[1];
                 if (modifier === 'PM' && hours < 12) hours += 12;
                 if (modifier === 'AM' && hours === 12) hours = 0;
                 return hours * 60 + minutes;
-            } catch (e) {
+            } catch {
                 return 0;
             }
         };

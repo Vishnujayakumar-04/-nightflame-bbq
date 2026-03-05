@@ -9,32 +9,20 @@ import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
 import { useShopStore } from '../../store/shopStore';
 import { useMenuStore } from '../../store/menuStore';
-import { StatusBadge } from '../../components/ui/StatusBadge';
-import { Order, ShopStatus } from '../../types/models';
+import { PaymentMethod } from '../../constants/enums';
+import { Order } from '../../types/models';
 import { useState } from 'react';
 import { TextInput, Switch } from 'react-native';
 import { AdminPaymentModal } from '../../components/AdminPaymentModal';
 import { AdminActionModal } from '../../components/AdminActionModal';
-import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatOrderIdShort = (order: Order) => {
-    if (order.orderNumber) {
-        return `#${String(order.runningNumber).padStart(3, '0')}`;
-    }
-    return `#${order.orderId.substring(0, 4).toUpperCase()}`;
-};
-const getRelativeTime = (timestamp: number) => {
-    const diff = Math.floor((Date.now() - timestamp) / 60000);
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${diff}m ago`;
-    return `${Math.floor(diff / 60)}h ago`;
-};
+
 
 export default function AdminDashboardScreen() {
     const router = useRouter();
-    const { orders, subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
-    const { user, signOut } = useAuthStore();
+    const { subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
+    const { signOut } = useAuthStore();
     const { menuItems, subscribeToMenu } = useMenuStore();
     const { status, subscribeToStatus, updateStatus } = useShopStore();
 
@@ -58,12 +46,7 @@ export default function AdminDashboardScreen() {
         };
     }, []);
 
-    const handleStatusUpdate = (orderId: string) => {
-        const order = orders.find(o => o.orderId === orderId);
-        if (!order) return;
-        setSelectedOrderForAction(order);
-        setActionModalVisible(true);
-    };
+
 
     const handleConfirmPayment = async (method: PaymentMethod.CASH | PaymentMethod.UPI, transactionId?: string) => {
         if (!selectedOrderForPayment) return;
@@ -88,9 +71,8 @@ export default function AdminDashboardScreen() {
         setSelectedOrderForPayment(null);
     };
 
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const todayOrders = orders.filter(o => o.timestamp >= startOfToday);
+
+    // todayOrders intentionally unused — kept for potential future use
     const todayRevenue = 0;
     const activeOrdersCount = 0;
     const todayOrdersCount = 0;
@@ -101,7 +83,7 @@ export default function AdminDashboardScreen() {
     const readyCount = 0;
     const confirmedCount = 0;
 
-    const recentOrders = [...todayOrders].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+
 
     const handleLogout = () => {
         Alert.alert('Logout', 'Sign out of admin?', [

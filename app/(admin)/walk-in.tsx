@@ -1,5 +1,5 @@
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MenuItem } from '../../types/models';
 import { useMenuStore } from '../../store/menuStore';
 import { useOrderStore } from '../../store/orderStore';
-import { PaymentType, PaymentMethod, PaymentStatus } from '../../constants/enums';
+import { PaymentType, PaymentStatus } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 

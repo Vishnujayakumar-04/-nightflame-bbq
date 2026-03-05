@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-// @ts-ignore
+// @ts-expect-error — getReactNativePersistence is untyped in the firebase/auth package types
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// @ts-ignore - The console error explicitly tells us to use getReactNativePersistence from firebase/auth
+// Using getReactNativePersistence from firebase/auth for AsyncStorage persistence
 export const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
 });

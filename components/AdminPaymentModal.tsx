@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './ui/Button';
 import { PaymentMethod } from '../constants/enums';
@@ -26,8 +26,8 @@ export function AdminPaymentModal({ visible, orderId, amount, customerName, isLo
             // Reset state after success
             setTransactionId('');
             setSelectedMethod(PaymentMethod.UPI);
-        } catch (e) {
-            console.error(e);
+        } catch {
+            // payment confirmation failed — handled by parent
         } finally {
             setIsSubmitting(false);
         }

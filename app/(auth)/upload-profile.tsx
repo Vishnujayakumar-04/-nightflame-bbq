@@ -11,7 +11,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 export default function UploadProfileScreen() {
     const router = useRouter();
     const [image, setImage] = useState<string | null>(null);
-    const { profilePhotoUri, setProfilePhoto, completeRegistration, isLoading } = useAuthStore();
+    const { setProfilePhoto, completeRegistration, isLoading } = useAuthStore();
 
     const pickImage = async (useCamera: boolean) => {
         const permission = useCamera
@@ -38,7 +38,7 @@ export default function UploadProfileScreen() {
         try {
             await completeRegistration();
             router.replace('/(auth)/notification-permission');
-        } catch (e) {
+        } catch {
             Alert.alert('Error', 'Failed to complete registration. Please try again.');
         }
     };

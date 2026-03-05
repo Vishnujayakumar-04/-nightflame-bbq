@@ -31,7 +31,7 @@ const getNutritionInfo = (item: MenuItem) => {
 
 export default function MenuScreen() {
     const { menuItems, isLoading, subscribeToMenu } = useMenuStore();
-    const { items: cartItems, addItem, getCartTotal, getItemCount } = useCartStore();
+    const { addItem, getCartTotal, getItemCount } = useCartStore();
     const { status: shopStatus, subscribeToStatus } = useShopStore();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -72,7 +72,7 @@ export default function MenuScreen() {
         return result;
     }, [menuItems, search, selectedCategory]);
 
-    const getCategoryEmoji = (_cat: string) => '';
+
 
     const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
         <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={styles.menuCardContainer}>
