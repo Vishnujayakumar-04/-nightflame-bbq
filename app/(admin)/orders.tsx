@@ -12,7 +12,12 @@ import { AdminActionModal } from '../../components/AdminActionModal';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
+const formatOrderIdShort = (order: Order) => {
+    if (order.orderNumber) {
+        return `#${String(order.runningNumber).padStart(3, '0')}`;
+    }
+    return `#${order.orderId.substring(0, 4).toUpperCase()}`;
+};
 const getRelativeTime = (timestamp: number) => {
     const diff = Math.floor((Date.now() - timestamp) / 60000);
     if (diff < 1) return 'Just now';
@@ -91,7 +96,7 @@ export default function AdminOrdersScreen() {
             >
                 <View style={styles.cardHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
+                        <Text style={styles.orderId}>{formatOrderIdShort(item)}</Text>
                         {!item.userId && (
                             <View style={styles.walkInTag}>
                                 <Text style={styles.walkInTagText}>Walk-in</Text>
@@ -165,7 +170,7 @@ export default function AdminOrdersScreen() {
 
             {/* Orders List */}
             <FlatList
-                data={filteredOrders}
+                data={[]}
                 keyExtractor={item => item.orderId}
                 renderItem={renderOrderCard}
                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}

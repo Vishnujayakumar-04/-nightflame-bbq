@@ -84,14 +84,14 @@ export default function WalkInOrderScreen() {
                 pickupTime: Date.now() + 15 * 60000,
                 // estimatedPickupTime is calculated automatically in store
                 paymentType: PaymentType.PAY_NOW,
-                paymentStatus: PaymentStatus.PAID, // Walk-ins pay at counter
-                paymentMethod: PaymentMethod.CASH,
-                paidAt: Date.now(),
+                paymentStatus: PaymentStatus.UNPAID, // Changed to unpaid by default
+                paymentMethod: null,
+                paidAt: undefined,
                 notificationShown: true,
                 isLocked: false,
                 lockedBy: null
-            });
-            Alert.alert('Success', 'Walk-in order captured and marked as Paid!', [
+            } as any);
+            Alert.alert('Success', 'Walk-in order created! Collect payment from the dashboard.', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
         } catch {
@@ -205,9 +205,9 @@ export default function WalkInOrderScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
                 <View>
                     <Text style={styles.title}>Walk-in Order</Text>
                     <Text style={styles.stepText}>Step {step} of 2 · {step === 1 ? 'Select Items' : 'Review & Place'}</Text>
@@ -217,7 +217,7 @@ export default function WalkInOrderScreen() {
             {step === 1 ? renderStep1() : renderStep2()}
 
             {/* Bottom Action Bar */}
-            <View style={[styles.bottomBar, { paddingBottom: Math.max(16, insets.bottom + 8) }]}>
+            <View style={[styles.bottomBar, { paddingBottom: 24 }]}>
                 {step === 1 ? (
                     <TouchableOpacity
                         onPress={() => setStep(2)}
@@ -258,7 +258,7 @@ export default function WalkInOrderScreen() {
                     </View>
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -323,8 +323,7 @@ const styles = StyleSheet.create({
     totalLabel: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_700Bold' },
     totalValue: { color: '#FF6A00', fontSize: 22, fontFamily: 'Inter_700Bold' },
     bottomBar: {
-        backgroundColor: '#252121', paddingHorizontal: 16, paddingTop: 14,
-        borderTopWidth: 1, borderTopColor: '#353030',
+        paddingHorizontal: 16, paddingTop: 14,
     },
     nextBtn: { borderRadius: 14, overflow: 'hidden' },
     nextGradient: {

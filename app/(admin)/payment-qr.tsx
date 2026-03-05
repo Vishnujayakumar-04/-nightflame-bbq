@@ -170,12 +170,12 @@ export default function PaymentQRScreen() {
             </View>
 
             {activeTab === 'qr' ? (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
                     {/* QR Card */}
                     <View style={styles.qrCard}>
                         <View style={styles.qrImageWrapper}>
                             <Image
-                                source={require('../../assets/Payment/Paytm_Qr.jpeg')}
+                                source={require('../../assets/Payment/IMG_20260305_105900.png')}
                                 style={styles.qrImage}
                                 resizeMode="contain"
                             />
@@ -230,7 +230,7 @@ export default function PaymentQRScreen() {
                         data={filteredOrders}
                         keyExtractor={item => item.orderId}
                         renderItem={renderOrderRow}
-                        contentContainerStyle={{ paddingBottom: 100 }}
+                        contentContainerStyle={{ paddingBottom: 140 }}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
@@ -283,8 +283,8 @@ const styles = StyleSheet.create({
         padding: 16, borderWidth: 1, borderColor: '#353030', alignItems: 'center',
     },
     qrImageWrapper: {
-        backgroundColor: '#FFFFFF', borderRadius: 14, padding: 10, marginBottom: 14,
-        width: width - 100, aspectRatio: 1, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#FFFFFF', borderRadius: 14, padding: 8, marginBottom: 14,
+        width: width - 40, aspectRatio: 1, alignItems: 'center', justifyContent: 'center',
     },
     qrImage: { width: '100%', height: '100%', borderRadius: 6 },
     infoRow: {

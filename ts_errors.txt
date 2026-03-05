@@ -1,0 +1,31 @@
+app/(admin)/dashboard.tsx(64,67): error TS2345: Argument of type 'PaymentMethodType' is not assignable to parameter of type 'PaymentMethod.CASH | PaymentMethod.UPI'.
+  Type '"Cash"' is not assignable to type 'PaymentMethod.CASH | PaymentMethod.UPI'.
+app/(admin)/dashboard.tsx(87,75): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+app/(admin)/dashboard.tsx(90,75): error TS2551: Property 'pending' does not exist on type 'typeof OrderStatus'. Did you mean 'PENDING'?
+app/(admin)/dashboard.tsx(91,77): error TS2551: Property 'preparing' does not exist on type 'typeof OrderStatus'. Did you mean 'PREPARING'?
+app/(admin)/dashboard.tsx(92,73): error TS2551: Property 'ready' does not exist on type 'typeof OrderStatus'. Did you mean 'READY'?
+app/(admin)/dashboard.tsx(93,77): error TS2551: Property 'pending' does not exist on type 'typeof OrderStatus'. Did you mean 'PENDING'?
+app/(admin)/dashboard.tsx(93,113): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+app/(admin)/orders.tsx(51,67): error TS2345: Argument of type 'PaymentMethodType' is not assignable to parameter of type 'PaymentMethod.CASH | PaymentMethod.UPI'.
+  Type '"Cash"' is not assignable to type 'PaymentMethod.CASH | PaymentMethod.UPI'.
+app/(admin)/orders.tsx(71,60): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+app/(admin)/walk-in.tsx(87,17): error TS2322: Type '"Paid"' is not assignable to type 'PaymentStatus'.
+app/(customer)/cart.tsx(78,17): error TS2322: Type '"PayLater" | PaymentType.PAY_NOW' is not assignable to type 'PaymentType'.
+  Type '"PayLater"' is not assignable to type 'PaymentType'.
+app/(customer)/cart.tsx(79,17): error TS2322: Type '"Unpaid" | "Payment Initiated"' is not assignable to type 'PaymentStatus'.
+  Type '"Unpaid"' is not assignable to type 'PaymentStatus'. Did you mean 'PaymentStatus.PAID'?
+app/(customer)/cart.tsx(80,17): error TS2322: Type '"UPI" | null' is not assignable to type 'PaymentMethod | null'.
+  Type '"UPI"' is not assignable to type 'PaymentMethod | null'.
+app/(customer)/cart.tsx(251,48): error TS2345: Argument of type '"PayNow"' is not assignable to parameter of type '"PayLater" | PaymentType.PAY_NOW'.
+app/(customer)/order-tracking/[orderId].tsx(21,30): error TS2551: Property 'pending' does not exist on type 'typeof OrderStatus'. Did you mean 'PENDING'?
+app/(customer)/order-tracking/[orderId].tsx(22,30): error TS2551: Property 'preparing' does not exist on type 'typeof OrderStatus'. Did you mean 'PREPARING'?
+app/(customer)/order-tracking/[orderId].tsx(23,30): error TS2551: Property 'ready' does not exist on type 'typeof OrderStatus'. Did you mean 'READY'?
+app/(customer)/order-tracking/[orderId].tsx(24,30): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+app/(customer)/orders.tsx(29,60): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+app/(customer)/orders.tsx(33,60): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+components/ui/StatusBadge.tsx(13,30): error TS2551: Property 'pending' does not exist on type 'typeof OrderStatus'. Did you mean 'PENDING'?
+components/ui/StatusBadge.tsx(15,30): error TS2551: Property 'preparing' does not exist on type 'typeof OrderStatus'. Did you mean 'PREPARING'?
+components/ui/StatusBadge.tsx(17,30): error TS2551: Property 'ready' does not exist on type 'typeof OrderStatus'. Did you mean 'READY'?
+components/ui/StatusBadge.tsx(19,30): error TS2551: Property 'completed' does not exist on type 'typeof OrderStatus'. Did you mean 'COMPLETED'?
+store/authStore.ts(108,17): error TS2322: Type '"customer"' is not assignable to type 'UserRole'.
+store/authStore.ts(134,21): error TS2322: Type '"admin"' is not assignable to type 'UserRole'.

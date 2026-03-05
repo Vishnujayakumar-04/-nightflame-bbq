@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import {  CartItem } from '../../../types/models';
+import { CartItem } from '../../../types/models';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useOrderStore } from '../../../store/orderStore';
 import { OrderStatus, PaymentStatus } from '../../../constants/enums';
@@ -194,8 +194,8 @@ export default function OrderTrackingScreen() {
                             </Text>
                             <View style={styles.qrWrapper}>
                                 <Image
-                                    source={{ uri: qrUrl }}
-                                    style={styles.qrImage}
+                                    source={require('../../../assets/Payment/IMG_20260305_105900.png')}
+                                    style={{ width: 240, height: 240, borderRadius: 8 }}
                                     resizeMode="contain"
                                 />
                             </View>
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     backBtn: { padding: 4, marginLeft: -8 },
     headerTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: 'Inter_600SemiBold' },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { padding: 20, paddingBottom: 40 },
+    scrollContent: { padding: 20, paddingBottom: 120 },
     badgeContainer: { alignItems: 'center', marginBottom: 24 },
     card: {
         backgroundColor: '#252121', borderRadius: 16, padding: 20,

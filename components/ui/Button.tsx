@@ -6,16 +6,29 @@ interface ButtonProps {
     title: string;
     onPress: () => void;
     variant?: 'primary' | 'secondary' | 'outline' | 'destructive';
+    size?: 'default' | 'large';
     disabled?: boolean;
     loading?: boolean;
     icon?: React.ReactNode;
 }
 
-export const Button = ({ title, onPress, variant = 'primary', disabled = false, loading = false, icon }: ButtonProps) => {
+export const Button = ({
+    title,
+    onPress,
+    variant = 'primary',
+    size = 'default',
+    disabled = false,
+    loading = false,
+    icon
+}: ButtonProps) => {
 
     // Core structure properties based on variants
     const isPrimary = variant === 'primary' && !disabled;
-    const heightClass = variant === 'secondary' ? 'h-[48px]' : 'h-[52px]';
+
+    const getHeight = () => {
+        if (size === 'large') return 'h-[62px]';
+        return variant === 'secondary' ? 'h-[48px]' : 'h-[52px]';
+    };
 
     // Non-gradient background styles
     const getBgClass = () => {
@@ -39,7 +52,7 @@ export const Button = ({ title, onPress, variant = 'primary', disabled = false, 
             ) : (
                 <>
                     {icon && <View className="mr-2">{icon}</View>}
-                    <Text className={`text-[16px] font-[Inter_700Bold] ${getTextColor()}`}>
+                    <Text className={`${size === 'large' ? 'text-[18px]' : 'text-[16px]'} font-[Inter_700Bold] ${getTextColor()}`}>
                         {title}
                     </Text>
                 </>
@@ -47,7 +60,7 @@ export const Button = ({ title, onPress, variant = 'primary', disabled = false, 
         </View>
     );
 
-    const baseClasses = `w-full rounded-[16px] flex items-center justify-center flex-row ${heightClass} ${getBgClass()}`;
+    const baseClasses = `w-full rounded-[16px] flex items-center justify-center flex-row ${getHeight()} ${getBgClass()}`;
 
     return (
         <TouchableOpacity

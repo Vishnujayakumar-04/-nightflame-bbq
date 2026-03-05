@@ -18,7 +18,12 @@ import { AdminActionModal } from '../../components/AdminActionModal';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
+const formatOrderIdShort = (order: Order) => {
+    if (order.orderNumber) {
+        return `#${String(order.runningNumber).padStart(3, '0')}`;
+    }
+    return `#${order.orderId.substring(0, 4).toUpperCase()}`;
+};
 const getRelativeTime = (timestamp: number) => {
     const diff = Math.floor((Date.now() - timestamp) / 60000);
     if (diff < 1) return 'Just now';
@@ -86,14 +91,15 @@ export default function AdminDashboardScreen() {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const todayOrders = orders.filter(o => o.timestamp >= startOfToday);
-    const todayRevenue = todayOrders.filter(o => o.paymentStatus === PaymentStatus.PAID).reduce((sum, o) => sum + o.totalAmount, 0);
-    const activeOrders = todayOrders.filter(o => o.status !== OrderStatus.COMPLETED);
+    const todayRevenue = 0;
+    const activeOrdersCount = 0;
+    const todayOrdersCount = 0;
 
-    // Live queue counts
-    const pendingCount = todayOrders.filter(o => o.status === OrderStatus.PENDING).length;
-    const preparingCount = todayOrders.filter(o => o.status === OrderStatus.PREPARING).length;
-    const readyCount = todayOrders.filter(o => o.status === OrderStatus.READY).length;
-    const confirmedCount = todayOrders.filter(o => o.status !== OrderStatus.PENDING && o.status !== OrderStatus.COMPLETED).length - preparingCount - readyCount;
+    // Live queue counts - Forced to 0
+    const pendingCount = 0;
+    const preparingCount = 0;
+    const readyCount = 0;
+    const confirmedCount = 0;
 
     const recentOrders = [...todayOrders].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
@@ -111,9 +117,8 @@ export default function AdminDashboardScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
-                {/* Header */}
+            {/* Sticky Header Area */}
+            <View style={{ backgroundColor: '#1A1818', zIndex: 10 }}>
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <View style={styles.adminBadge}>
@@ -139,17 +144,17 @@ export default function AdminDashboardScreen() {
                     </View>
                     <View style={styles.statsColumn}>
                         <View style={styles.statBox}>
-                            <Text style={styles.statNumber}>{todayOrders.length}</Text>
+                            <Text style={styles.statNumber}>{todayOrdersCount}</Text>
                             <Text style={styles.statBoxLabel}>Orders Today</Text>
                         </View>
                         <View style={styles.statBox}>
-                            <Text style={styles.statNumber}>{activeOrders.length}</Text>
+                            <Text style={styles.statNumber}>{activeOrdersCount}</Text>
                             <Text style={styles.statBoxLabel}>Active Now</Text>
                         </View>
                     </View>
                 </Animated.View>
 
-                {/* LIVE QUEUE */}
+                {/* LIVE QUEUE COUNTS */}
                 <Text style={styles.sectionLabel}>LIVE QUEUE</Text>
                 <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.queueRow}>
                     {[
@@ -165,7 +170,7 @@ export default function AdminDashboardScreen() {
                     ))}
                 </Animated.View>
 
-                {/* Action Buttons */}
+                {/* Quick Action Buttons */}
                 <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.actionRow}>
                     <TouchableOpacity
                         style={styles.walkInBtn}
@@ -182,6 +187,9 @@ export default function AdminDashboardScreen() {
                         <Text style={styles.analyticsText}>Analytics</Text>
                     </TouchableOpacity>
                 </Animated.View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
                 {/* SHOP CONTROL CENTER */}
                 <Text style={styles.sectionLabel}>SHOP CONTROL CENTER</Text>
@@ -259,56 +267,13 @@ export default function AdminDashboardScreen() {
                 </Animated.View>
 
 
-                {/* Recent Orders */}
+                {/* Recent Orders - Hidden as requested */}
+                {/* 
                 <View style={styles.recentHeader}>
-                    <Text style={styles.sectionLabel}>RECENT ORDERS</Text>
-                    <TouchableOpacity onPress={() => router.push('/(admin)/orders')}>
-                        <Text style={styles.seeAllText}>See all</Text>
-                    </TouchableOpacity>
+                    ...
                 </View>
-
-                {recentOrders.map((order, index) => (
-                    <Animated.View key={order.orderId} entering={FadeInDown.delay(400 + index * 100).duration(400)}>
-                        <TouchableOpacity
-                            style={styles.orderCard}
-                            activeOpacity={0.85}
-                            onPress={() => handleStatusUpdate(order.orderId)}
-                        >
-                            <View style={styles.orderCardHeader}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Text style={styles.orderIdText}>{formatOrderIdShort(order.orderId)}</Text>
-                                    {!order.userId && (
-                                        <View style={styles.walkInTag}>
-                                            <Text style={styles.walkInTagText}>Walk-in</Text>
-                                        </View>
-                                    )}
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <StatusBadge status={order.status} />
-                                    <Ionicons name="chevron-forward" size={16} color="#757575" />
-                                </View>
-                            </View>
-                            <Text style={styles.orderCustomer}>{order.customerName || 'Customer'}</Text>
-                            <Text style={styles.orderItemsText} numberOfLines={1}>
-                                {order.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
-                            </Text>
-                            <View style={styles.orderCardFooter}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                    <Ionicons name="time-outline" size={12} color="#757575" />
-                                    <Text style={styles.orderTimeText}>{getRelativeTime(order.timestamp)}</Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <View style={[styles.badge, { backgroundColor: order.paymentStatus === PaymentStatus.PAID ? 'rgba(76, 175, 80, 0.15)' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? 'rgba(255, 152, 0, 0.15)' : 'rgba(239, 83, 80, 0.15)' }]}>
-                                        <Text style={[styles.badgeText, { color: order.paymentStatus === PaymentStatus.PAID ? '#4CAF50' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? '#FF9800' : '#EF5350' }]}>
-                                            {order.paymentStatus === PaymentStatus.PAID ? 'PREPAID' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? 'VERIFY UPI' : 'UNPAID'}
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.orderAmount}>{formatCurrency(order.totalAmount)}</Text>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                    </Animated.View>
-                ))}
+                {recentOrders.map(...)}
+                */}
 
             </ScrollView>
 
@@ -337,11 +302,12 @@ export default function AdminDashboardScreen() {
                     updateOrderStatus(id, status);
                     setActionModalVisible(false);
                 }}
-                onCollectPayment={async (order) => {
-                    setActionModalVisible(false);
-                    await lockOrder(order.orderId);
+                onCollectPayment={(order) => {
                     setSelectedOrderForPayment(order);
                     setPaymentModalVisible(true);
+                    setActionModalVisible(false);
+                    // Lock in background to avoid blocking UI transition
+                    lockOrder(order.orderId).catch(console.error);
                 }}
             />
 
@@ -405,29 +371,29 @@ const styles = StyleSheet.create({
         width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255, 106, 0, 0.12)',
         alignItems: 'center', justifyContent: 'center',
     },
-    adminLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Inter_400Regular' },
-    adminName: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+    adminLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Urbanist_400Regular' },
+    adminName: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Urbanist_700Bold' },
     logoutBtn: {
         flexDirection: 'row', alignItems: 'center', gap: 5,
         backgroundColor: '#252121', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
     },
-    logoutText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular' },
+    logoutText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Urbanist_400Regular' },
     statsContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 16 },
     revenueCard: {
         flex: 1.5, backgroundColor: '#FF6A00', borderRadius: 16, padding: 16, justifyContent: 'center',
     },
-    revenueLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 20, fontFamily: 'Inter_700Bold' },
-    revenueAmount: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Poppins_700Bold', marginTop: 2 },
-    revenueSubLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 3 },
+    revenueLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 20, fontFamily: 'Urbanist_700Bold' },
+    revenueAmount: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Urbanist_700Bold', marginTop: 2 },
+    revenueSubLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Urbanist_400Regular', marginTop: 3 },
     statsColumn: { flex: 1, gap: 10 },
     statBox: {
-        flex: 1, backgroundColor: '#252121', borderRadius: 14, padding: 12, justifyContent: 'center',
-        borderWidth: 1, borderColor: '#353030',
+        flex: 1, backgroundColor: '#252121', borderRadius: 16, padding: 12, justifyContent: 'center',
+        elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8,
     },
-    statNumber: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Inter_700Bold' },
-    statBoxLabel: { color: '#757575', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    statNumber: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Urbanist_800ExtraBold' },
+    statBoxLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Urbanist_500Medium', marginTop: 2 },
     sectionLabel: {
-        color: '#757575', fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1,
+        color: '#757575', fontSize: 11, fontFamily: 'Urbanist_600SemiBold', letterSpacing: 1,
         paddingHorizontal: 16, marginBottom: 10,
     },
     queueRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 6, marginBottom: 16 },
@@ -435,19 +401,19 @@ const styles = StyleSheet.create({
         flex: 1, backgroundColor: '#252121', borderRadius: 12, padding: 12, alignItems: 'center',
         borderWidth: 1,
     },
-    queueCount: { fontSize: 20, fontFamily: 'Inter_700Bold' },
-    queueLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 3 },
+    queueCount: { fontSize: 20, fontFamily: 'Urbanist_700Bold' },
+    queueLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Urbanist_400Regular', marginTop: 3 },
     actionRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 20 },
     walkInBtn: {
         flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
         backgroundColor: '#FF6A00', paddingVertical: 12, borderRadius: 12,
     },
-    walkInText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_700Bold' },
+    walkInText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Urbanist_700Bold' },
     analyticsBtn: {
         flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
         backgroundColor: '#252121', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#353030',
     },
-    analyticsText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+    analyticsText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Urbanist_600SemiBold' },
     controlCard: {
         backgroundColor: '#252121',
         marginHorizontal: 16,
@@ -458,17 +424,17 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     controlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    controlTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
-    controlSub: { color: '#757575', fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    controlTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Urbanist_700Bold' },
+    controlSub: { color: '#757575', fontSize: 11, fontFamily: 'Urbanist_400Regular', marginTop: 2 },
     divider: { height: 1, backgroundColor: '#353030', marginVertical: 12 },
     timeInputsRow: { flexDirection: 'row', gap: 10 },
-    inputLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
+    inputLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Urbanist_600SemiBold', marginBottom: 6 },
     timeInput: {
         backgroundColor: '#1A1818',
         borderRadius: 10,
         padding: 10,
         color: '#FFFFFF',
-        fontFamily: 'Inter_600SemiBold',
+        fontFamily: 'Urbanist_600SemiBold',
         borderWidth: 1,
         borderColor: '#353030',
     },
@@ -477,7 +443,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 12,
         color: '#FFFFFF',
-        fontFamily: 'Inter_400Regular',
+        fontFamily: 'Urbanist_400Regular',
         borderWidth: 1,
         borderColor: '#353030',
         minHeight: 70,
@@ -487,24 +453,24 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 16, marginBottom: 10,
     },
-    seeAllText: { color: '#FF6A00', fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+    seeAllText: { color: '#FF6A00', fontSize: 13, fontFamily: 'Urbanist_600SemiBold' },
     orderCard: {
-        backgroundColor: '#252121', marginHorizontal: 16, marginBottom: 10, borderRadius: 14,
-        padding: 14, borderWidth: 1, borderColor: '#353030',
+        backgroundColor: '#252121', marginHorizontal: 16, marginBottom: 12, borderRadius: 20,
+        padding: 16, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10,
     },
-    orderCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    orderIdText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Inter_700Bold' },
+    orderCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    orderIdText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Urbanist_700Bold' },
     walkInTag: {
         backgroundColor: 'rgba(255, 193, 7, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     },
-    walkInTagText: { color: '#FFC107', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-    orderCustomer: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
-    orderItemsText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular', marginBottom: 10 },
+    walkInTagText: { color: '#FFC107', fontSize: 10, fontFamily: 'Urbanist_700Bold' },
+    orderCustomer: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Urbanist_700Bold', marginBottom: 4 },
+    orderItemsText: { color: '#A5A2A2', fontSize: 13, fontFamily: 'Urbanist_400Regular', marginBottom: 12 },
     orderCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    orderTimeText: { color: '#757575', fontSize: 12, fontFamily: 'Inter_400Regular' },
+    orderTimeText: { color: '#757575', fontSize: 12, fontFamily: 'Urbanist_400Regular' },
     badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    badgeText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
-    orderAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
+    badgeText: { fontSize: 10, fontFamily: 'Urbanist_700Bold' },
+    orderAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Urbanist_700Bold' },
 });
 
 const specialStyles = StyleSheet.create({
@@ -518,7 +484,7 @@ const specialStyles = StyleSheet.create({
         alignSelf: 'center', marginBottom: 16,
     },
     title: {
-        color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold',
+        color: '#FFFFFF', fontSize: 20, fontFamily: 'Urbanist_700Bold',
         textAlign: 'center', marginBottom: 16,
     },
     item: {
@@ -529,11 +495,11 @@ const specialStyles = StyleSheet.create({
     itemSelected: {
         borderColor: '#4CAF50', backgroundColor: 'rgba(76, 175, 80, 0.08)',
     },
-    itemName: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-    itemPrice: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    itemName: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Urbanist_600SemiBold' },
+    itemPrice: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Urbanist_400Regular', marginTop: 2 },
     clearBtn: {
         padding: 14, alignItems: 'center', marginTop: 8,
         borderWidth: 1, borderColor: '#353030', borderRadius: 12,
     },
-    clearText: { color: '#EF5350', fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+    clearText: { color: '#EF5350', fontSize: 14, fontFamily: 'Urbanist_600SemiBold' },
 });

@@ -1,7 +1,13 @@
 import { Stack, SplashScreen } from "expo-router";
 import { useEffect } from "react";
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
-import { Poppins_700Bold } from "@expo-google-fonts/poppins";
+import {
+    useFonts,
+    Urbanist_400Regular,
+    Urbanist_500Medium,
+    Urbanist_600SemiBold,
+    Urbanist_700Bold,
+    Urbanist_800ExtraBold
+} from "@expo-google-fonts/urbanist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./global.css";
 import { useAuthStore } from "../store/authStore";
@@ -11,11 +17,11 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
     const [loaded, error] = useFonts({
-        Inter_400Regular,
-        Inter_500Medium,
-        Inter_600SemiBold,
-        Inter_700Bold,
-        Poppins_700Bold,
+        Urbanist_400Regular,
+        Urbanist_500Medium,
+        Urbanist_600SemiBold,
+        Urbanist_700Bold,
+        Urbanist_800ExtraBold,
     });
 
     useEffect(() => {

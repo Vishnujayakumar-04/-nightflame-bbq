@@ -13,6 +13,7 @@ interface AuthState {
     verificationId: string | null;
     phoneNumber: string | null;
     customerName: string | null;
+    dob: string | null;
     customerAddress: string | null;
     profilePhotoUri: string | null;
     user: User | null;
@@ -40,6 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     verificationId: null,
     phoneNumber: null,
     customerName: null,
+    dob: null,
     customerAddress: null,
     profilePhotoUri: null,
     tempUid: null,
@@ -103,6 +105,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const userData: User = {
                 userId: tempUid,
                 name: customerName || 'User',
+                dob: get().dob || undefined,
                 phoneNumber: `+91 ${phoneNumber}`,
                 address: customerAddress || '',
                 profilePhotoUri: profilePhotoUri || undefined,
@@ -116,6 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 user: userData,
                 tempUid: null,
                 customerName: null,
+                dob: null,
                 customerAddress: null,
                 profilePhotoUri: null,
                 error: null

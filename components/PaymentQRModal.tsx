@@ -28,8 +28,8 @@ export function PaymentQRModal({ visible, amount, isLoading, onClose, onPaid }: 
                     {/* QR Code - Actual Payment QR */}
                     <View style={styles.qrContainer}>
                         <Image
-                            source={require('../assets/Payment/Paytm_Qr.jpeg')}
-                            style={{ width: 200, height: 200, borderRadius: 8 }}
+                            source={require('../assets/Payment/IMG_20260305_105900.png')}
+                            style={{ width: 260, height: 260, borderRadius: 8 }}
                             resizeMode="contain"
                         />
                         <Text style={styles.qrHelpText}>Scan via Any UPI App</Text>
@@ -42,12 +42,12 @@ export function PaymentQRModal({ visible, amount, isLoading, onClose, onPaid }: 
                     </View>
 
                     {/* Action */}
-                    <View style={{ marginTop: 24 }}>
+                    <View style={{ marginTop: 32 }}>
                         <Button
                             title={`I Have Paid ₹${amount.toFixed(0)}`}
                             onPress={onPaid}
                             loading={isLoading}
-                            icon={<Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />}
+                            icon={<Ionicons name="checkmark-circle-outline" size={22} color="#FFFFFF" />}
                         />
                     </View>
 
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#FFFFFF',
-        padding: 24,
+        padding: 12,
         borderRadius: 20,
         marginBottom: 24
     },

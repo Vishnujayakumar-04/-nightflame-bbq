@@ -21,7 +21,8 @@ export default function RegisterScreen() {
         if (isValid) {
             setIsLoading(true);
             try {
-                await completeRegistration(name.trim(), dob.trim());
+                useAuthStore.setState({ customerName: name.trim(), dob: dob.trim() });
+                await completeRegistration();
                 router.replace('/(customer)/home');
             } catch {
                 // error handled in store

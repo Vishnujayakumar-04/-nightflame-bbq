@@ -1,17 +1,28 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TouchableOpacity } from 'react-native';
 
-const formatOrderIdShort = (id: string) => `#NF-${id.substring(0, 3).toUpperCase()}`;
+import { useState, useEffect } from 'react';
+import { useOrderStore } from '../../../store/orderStore';
+import { Order } from '../../../types/models';
 
 export default function OrderConfirmationScreen() {
     const router = useRouter();
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
+    const { orders } = useOrderStore();
+    const [order, setOrder] = useState<Order | null>(null);
 
-    const displayId = orderId || 'UNKNOWN';
+    useEffect(() => {
+        if (orderId) {
+            const found = orders.find(o => o.orderId === orderId);
+            if (found) setOrder(found);
+        }
+    }, [orderId, orders]);
+
+    const displayId = order?.orderNumber || (orderId ? `#NF-${orderId.substring(0, 4).toUpperCase()}` : 'LOADING...');
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -28,14 +39,14 @@ export default function OrderConfirmationScreen() {
                 {/* Order ID Card */}
                 <View style={styles.orderIdCard}>
                     <Text style={styles.orderIdLabel}>ORDER ID</Text>
-                    <Text style={styles.orderIdValue}>{formatOrderIdShort(displayId)}</Text>
+                    <Text style={styles.orderIdValue}>{displayId}</Text>
                 </View>
 
                 {/* Actions */}
                 <View style={styles.actionsContainer}>
                     <TouchableOpacity
                         style={styles.trackBtn}
-                        onPress={() => router.replace(`/(customer)/order-tracking/${displayId}`)}
+                        onPress={() => router.replace(`/(customer)/order-tracking/${orderId}`)}
                     >
                         <LinearGradient
                             colors={['#FF6A00', '#E53B0A']}

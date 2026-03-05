@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, runOnJS } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useCartStore } from '../../store/cartStore';
@@ -20,35 +20,120 @@ const SHOP_MAPS_URL = "https://maps.app.goo.gl/FHdBWbXMXDW3pe4M6";
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 
-// Marquee Component
-const MarqueeText = () => {
-    const translateX = useSharedValue(width);
+const CARD_WIDTH = 160;
+const CARD_GAP = 16;
+const ITEM_WIDTH = CARD_WIDTH + CARD_GAP;
+
+// Individual Popular Item Card Component
+const PopularItemCard = ({ item, status, router }: { item: MenuItem; status: any; router: any }) => {
+    return (
+        <TouchableOpacity
+            style={[styles.popularCardContainer, !status?.isOpen && { opacity: 0.85 }]}
+            onPress={() => status?.isOpen && router.push('/(customer)/menu')}
+            activeOpacity={status?.isOpen ? 0.85 : 1}
+            disabled={!status?.isOpen}
+        >
+            <View style={styles.popularCardOuter}>
+                {(() => {
+                    const localImg = getMenuItemImage(item.name);
+                    if (item.imageUrl) {
+                        return <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />;
+                    } else if (localImg) {
+                        return <Image source={localImg} style={styles.popularImageTop} resizeMode="cover" />;
+                    } else {
+                        return (
+                            <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
+                                <Ionicons name="restaurant" size={24} color="#555" />
+                            </View>
+                        );
+                    }
+                })()}
+                <View style={styles.popularInfoContainer}>
+                    <Text style={styles.popularNameCard} numberOfLines={2}>{item.name}</Text>
+                    <Text style={styles.popularPriceCard}>{formatCurrency(item.price)}</Text>
+                    <View style={styles.orderButtonWrap}>
+                        <LinearGradient
+                            colors={status?.isOpen ? ['#F36D25', '#E5580F'] : ['#4A4A4A', '#3A3A3A']}
+                            style={styles.orderGradientBtn}
+                        >
+                            <Text style={styles.orderBtnText}>
+                                {status?.isOpen ? 'Order Now' : 'Closed'}
+                            </Text>
+                        </LinearGradient>
+                    </View>
+                    {!status?.isOpen && (
+                        <View style={styles.popularClosedBadge}>
+                            <Text style={styles.popularClosedBadgeText}>CLOSED</Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+};
+
+// Continuous Marquee Component for Item Cards
+const PopularMarquee = ({ items, status, router }: { items: MenuItem[]; status: any; router: any }) => {
+    const listWidth = items.length * ITEM_WIDTH;
+    const translateX = useSharedValue(0);
 
     useEffect(() => {
-        translateX.value = withRepeat(
-            withTiming(-width * 2, {
-                duration: 15000,
-                easing: Easing.linear,
-            }),
-            -1,
-            false
-        );
-    }, []);
+        let isCancelled = false;
+
+        const runAnimation = (currentStep: number) => {
+            if (isCancelled) return;
+
+            // Calculate next target position
+            const nextStep = currentStep + 1;
+            const targetX = -nextStep * ITEM_WIDTH;
+
+            translateX.value = withDelay(
+                3000, // Pause for 3 seconds on each item
+                withTiming(targetX, {
+                    duration: 1000, // Slide for 1 second
+                    easing: Easing.bezier(0.4, 0, 0.2, 1),
+                }, (finished) => {
+                    if (finished && !isCancelled) {
+                        // If we reached the end of the first set, jump to 0 instantly (seamless loop)
+                        if (nextStep >= items.length) {
+                            translateX.value = 0;
+                            runOnJS(runAnimation)(0);
+                        } else {
+                            runOnJS(runAnimation)(nextStep);
+                        }
+                    }
+                })
+            );
+        };
+
+        // Start from step 0
+        runAnimation(0);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [items.length, listWidth]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ translateX: translateX.value }],
     }));
 
     return (
-        <View style={styles.marqueeContainer}>
-            <Animated.View style={[styles.marqueeInner, animatedStyle]}>
-                <Text style={styles.marqueeText}>
-                    🔥 NEW: Peri Peri Wings now available! • 📢 FLAT 10% OFF on all Combos! • 🍗 Try our signature BBQ Grilled Bone-In Chicken! • 🔥 NEW: Peri Peri Wings now available! • 📢 FLAT 10% OFF on all Combos!
-                </Text>
+        <View style={styles.marqueeWrapper}>
+            <Animated.View style={[styles.marqueeInnerRow, animatedStyle]}>
+                {/* First set of items */}
+                {items.map((item) => (
+                    <PopularItemCard key={item.itemId} item={item} status={status} router={router} />
+                ))}
+                {/* Second set of items for seamless looping */}
+                {items.map((item) => (
+                    <PopularItemCard key={`${item.itemId}-dup`} item={item} status={status} router={router} />
+                ))}
             </Animated.View>
         </View>
     );
 };
+
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -78,196 +163,142 @@ export default function HomeScreen() {
         || menuItems[0];
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.userName}>{userName}</Text>
-                </View>
-
-                {/* Status Board */}
-                <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.statusBoardWrapper}>
-                    <View style={[styles.statusSign, !status?.isOpen && styles.statusSignClosed]}>
-                        <View style={styles.signChain} />
-                        <View style={styles.signContent}>
-                            <Ionicons name={status?.isOpen ? "sunny" : "moon"} size={22} color="#FFFFFF" />
-                            <Text style={styles.statusLabelText}>WE'RE {status?.isOpen ? 'OPEN' : 'CLOSED'}</Text>
-                        </View>
-                        <Text style={styles.timeLabelText}>
-                            {status?.isOpen
-                                ? `${status.openTime} - ${status.closeTime}`
-                                : status?.message || "Come tomorrow to Have Spicy Chicken!"}
-                        </Text>
-                    </View>
-                </Animated.View>
-
-                {/* Location Bar */}
-                <TouchableOpacity
-                    style={styles.locationBar}
-                    onPress={() => {
-                        Linking.openURL(SHOP_MAPS_URL).catch(() => { });
-                    }}
+        <LinearGradient colors={['#1A1818', '#1D1510']} style={styles.container}>
+            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 20 }}
                 >
-                    <View style={styles.locationIcon}>
-                        <Ionicons name="location" size={16} color="#FF6A00" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.locationTitle}>Our Location</Text>
-                        <Text style={styles.locationText} numberOfLines={2}>{SHOP_ADDRESS}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color="#757575" />
-                </TouchableOpacity>
 
-                {/* Today's Special Banner */}
-                {specialItem && (
-                    <Animated.View entering={FadeInDown.delay(100).duration(600)}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <Text style={styles.userName}>{userName}</Text>
                         <TouchableOpacity
-                            style={[styles.specialBanner, !status?.isOpen && { opacity: 0.8 }]}
-                            onPress={() => router.push('/(customer)/menu')}
-                            activeOpacity={status?.isOpen ? 0.9 : 1}
-                            disabled={!status?.isOpen}
+                            style={styles.shopBtn}
+                            activeOpacity={0.8}
+                            onPress={() => router.push('/(customer)/shop-details')}
                         >
-                            {(() => {
-                                const localImg = getMenuItemImage(specialItem.name);
-                                if (specialItem.imageUrl) {
-                                    return <Image source={{ uri: specialItem.imageUrl }} style={styles.specialImage} resizeMode="cover" />;
-                                } else if (localImg) {
-                                    return <Image source={localImg} style={styles.specialImage} resizeMode="cover" />;
-                                } else {
-                                    return <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />;
-                                }
-                            })()}
-                            <View style={styles.specialOverlay}>
-                                <View style={styles.specialBadge}>
-                                    <Text style={styles.specialBadgeText}>🔥 TODAY'S SPECIAL</Text>
-                                </View>
-                                <Text style={styles.specialTitle}>{specialItem.name}</Text>
-                                <TouchableOpacity
-                                    style={[styles.orderNowBtn, !status?.isOpen && styles.orderNowBtnDisabled]}
-                                    onPress={() => {
-                                        if (!status?.isOpen) return;
-                                        addItem(specialItem);
-                                        router.push('/(customer)/cart');
-                                    }}
-                                    disabled={!status?.isOpen}
-                                >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        {!status?.isOpen && <Ionicons name="lock-closed" size={14} color="#FFFFFF" />}
-                                        <Text style={styles.orderNowText}>
-                                            {status?.isOpen ? 'Order Now' : 'Store Closed'}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                                {!status?.isOpen && (
-                                    <View style={styles.closedOverlayLabel}>
-                                        <Text style={styles.closedOverlayText}>CURRENTLY CLOSED</Text>
-                                        <Text style={styles.opensAtText}>Opens at {status?.openTime || '6:00 PM'}</Text>
-                                    </View>
-                                )}
+                            <Image
+                                source={require('../../assets/LOGO.png')}
+                                style={styles.shopBtnImage}
+                                resizeMode="cover"
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Status Board */}
+                    <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.statusBoardWrapper}>
+                        <View style={[styles.statusSign, !status?.isOpen && styles.statusSignClosed]}>
+                            <View style={styles.signChain} />
+                            <View style={styles.signContent}>
+                                <Ionicons name={status?.isOpen ? "sunny" : "moon"} size={22} color="#FFFFFF" />
+                                <Text style={styles.statusLabelText}>WE'RE {status?.isOpen ? 'OPEN' : 'CLOSED'}</Text>
                             </View>
-                        </TouchableOpacity>
-                    </Animated.View>
-                )}
-
-                {/* Stats Row */}
-                <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.statsRow}>
-                    <View style={styles.statCard}>
-                        <Ionicons name="star" size={20} color="#FFD700" />
-                        <Text style={styles.statValue}>4.8 Rating</Text>
-                        <Text style={styles.statLabel}>200+ reviews</Text>
-                    </View>
-                    <View style={[styles.statCard, styles.statCardMiddle]}>
-                        <Ionicons name="time-outline" size={20} color="#90EE90" />
-                        <Text style={styles.statValue}>15-20 min</Text>
-                        <Text style={styles.statLabel}>Avg prep time</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Ionicons name="fast-food-outline" size={20} color="#FFB380" />
-                        <Text style={styles.statValue}>{menuItems.length} Items</Text>
-                        <Text style={styles.statLabel}>On menu today</Text>
-                    </View>
-                </Animated.View>
-
-                {/* Popular Now Section */}
-                <Animated.View entering={FadeInDown.delay(300).duration(600)}>
-                    <View style={styles.sectionHeader}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="trending-up" size={18} color="#FFFFFF" />
-                            <Text style={styles.sectionTitle}>Popular Now</Text>
+                            <Text style={styles.timeLabelText}>
+                                {status?.isOpen
+                                    ? `${status.openTime} - ${status.closeTime}`
+                                    : status?.message || "Come tomorrow to Have Spicy Chicken!"}
+                            </Text>
+                            {status?.isOpen && (
+                                <View style={styles.bannerPrepPill}>
+                                    <Text style={styles.bannerPrepText}>⚡ Ready in 15-20 mins</Text>
+                                </View>
+                            )}
                         </View>
-                        <TouchableOpacity onPress={() => router.push('/(customer)/menu')}>
-                            <Text style={styles.seeAllText}>See all</Text>
-                        </TouchableOpacity>
-                    </View>
+                    </Animated.View>
 
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 40, paddingBottom: 20, gap: 16 }}
+                    {/* Location Bar */}
+                    <TouchableOpacity
+                        style={styles.locationBar}
+                        onPress={() => {
+                            Linking.openURL(SHOP_MAPS_URL).catch(() => { });
+                        }}
                     >
-                        {popularItems.map((item) => (
+                        <View style={styles.locationIcon}>
+                            <Ionicons name="location" size={16} color="#FF6A00" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.locationTitle}>Our Location</Text>
+                            <Text style={styles.locationText} numberOfLines={2}>{SHOP_ADDRESS}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color="#757575" />
+                    </TouchableOpacity>
+
+                    {/* Today's Special Banner */}
+                    {specialItem && (
+                        <Animated.View entering={FadeInDown.delay(100).duration(600)}>
                             <TouchableOpacity
-                                key={item.itemId}
-                                style={[styles.popularCardContainer, !status?.isOpen && { opacity: 0.85 }]}
-                                onPress={() => status?.isOpen && router.push('/(customer)/menu')}
-                                activeOpacity={status?.isOpen ? 0.85 : 1}
+                                style={[styles.specialBanner, !status?.isOpen && { opacity: 0.8 }]}
+                                onPress={() => router.push('/(customer)/menu')}
+                                activeOpacity={status?.isOpen ? 0.9 : 1}
                                 disabled={!status?.isOpen}
                             >
-                                <View style={styles.popularCardOuter}>
-                                    {(() => {
-                                        const localImg = getMenuItemImage(item.name);
-                                        if (item.imageUrl) {
-                                            return <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />;
-                                        } else if (localImg) {
-                                            return <Image source={localImg} style={styles.popularImageTop} resizeMode="cover" />;
-                                        } else {
-                                            return (
-                                                <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
-                                                    <Ionicons name="restaurant" size={24} color="#555" />
-                                                </View>
-                                            );
-                                        }
-                                    })()}
-                                    <View style={styles.popularInfoContainer}>
-                                        <Text style={styles.popularNameCard} numberOfLines={2}>{item.name}</Text>
-                                        <Text style={styles.popularPriceCard}>{formatCurrency(item.price)}</Text>
-                                        <View style={styles.orderButtonWrap}>
-                                            <LinearGradient
-                                                colors={status?.isOpen ? ['#F36D25', '#E5580F'] : ['#4A4A4A', '#3A3A3A']}
-                                                style={styles.orderGradientBtn}
-                                            >
-                                                <Text style={styles.orderBtnText}>
-                                                    {status?.isOpen ? 'Order Now' : 'Closed'}
-                                                </Text>
-                                            </LinearGradient>
-                                        </View>
-                                        {!status?.isOpen && (
-                                            <View style={styles.popularClosedBadge}>
-                                                <Text style={styles.popularClosedBadgeText}>CLOSED</Text>
-                                            </View>
-                                        )}
+                                {(() => {
+                                    const localImg = getMenuItemImage(specialItem.name);
+                                    if (specialItem.imageUrl) {
+                                        return <Image source={{ uri: specialItem.imageUrl }} style={styles.specialImage} resizeMode="cover" />;
+                                    } else if (localImg) {
+                                        return <Image source={localImg} style={styles.specialImage} resizeMode="cover" />;
+                                    } else {
+                                        return <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />;
+                                    }
+                                })()}
+                                <View style={styles.specialOverlay}>
+                                    <View style={styles.specialBadge}>
+                                        <Text style={styles.specialBadgeText}>🔥 TODAY'S SPECIAL</Text>
                                     </View>
+                                    <Text style={styles.specialTitle}>{specialItem.name}</Text>
+                                    <TouchableOpacity
+                                        style={[styles.orderNowBtn, !status?.isOpen && styles.orderNowBtnDisabled]}
+                                        onPress={() => {
+                                            if (!status?.isOpen) return;
+                                            addItem(specialItem);
+                                            router.push('/(customer)/cart');
+                                        }}
+                                        disabled={!status?.isOpen}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            {!status?.isOpen && <Ionicons name="lock-closed" size={14} color="#FFFFFF" />}
+                                            <Text style={styles.orderNowText}>
+                                                {status?.isOpen ? 'Order Now' : 'Store Closed'}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                    {!status?.isOpen && (
+                                        <View style={styles.closedOverlayLabel}>
+                                            <Text style={styles.closedOverlayText}>CURRENTLY CLOSED</Text>
+                                            <Text style={styles.opensAtText}>Opens at {status?.openTime || '6:00 PM'}</Text>
+                                        </View>
+                                    )}
                                 </View>
                             </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </Animated.View>
+                        </Animated.View>
+                    )}
 
-                {/* Marquee Moved Here */}
-                <Animated.View entering={FadeInDown.delay(400).duration(600)}>
-                    <MarqueeText />
-                </Animated.View>
 
-            </ScrollView>
-        </SafeAreaView>
+                    {/* Popular Now Section */}
+                    <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+                        <View style={styles.sectionHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="trending-up" size={18} color="#FFFFFF" />
+                                <Text style={styles.sectionTitle}>Popular Now</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => router.push('/(customer)/menu')}>
+                                <Text style={styles.seeAllText}>See all</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <PopularMarquee items={popularItems} status={status} router={router} />
+                    </Animated.View>
+                </ScrollView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1A1818',
     },
     header: {
         flexDirection: 'row',
@@ -279,8 +310,26 @@ const styles = StyleSheet.create({
     },
     userName: {
         color: '#FFFFFF',
-        fontSize: 24,
+        fontSize: 26,
         fontFamily: 'Poppins_700Bold',
+        fontStyle: 'italic',
+    },
+    shopBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 106, 0, 0.3)',
+        elevation: 4,
+        shadowColor: '#FF6A00',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+    },
+    shopBtnImage: {
+        width: '100%',
+        height: '100%',
     },
 
     locationBar: {
@@ -391,14 +440,14 @@ const styles = StyleSheet.create({
     specialBadgeText: {
         color: '#FF6A00',
         fontSize: 11,
-        fontFamily: 'Inter_700Bold',
+        fontFamily: 'Urbanist_700Bold',
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
     specialTitle: {
         color: '#FFFFFF',
         fontSize: 22,
-        fontFamily: 'Poppins_700Bold',
+        fontFamily: 'Urbanist_700Bold',
         marginBottom: 12,
     },
     orderNowBtn: {
@@ -411,35 +460,24 @@ const styles = StyleSheet.create({
     orderNowText: {
         color: '#FFFFFF',
         fontSize: 14,
-        fontFamily: 'Inter_700Bold',
+        fontFamily: 'Urbanist_700Bold',
     },
-    statsRow: {
-        flexDirection: 'row',
-        marginHorizontal: 20,
-        marginBottom: 24,
-        gap: 10,
+    bannerPrepPill: {
+        marginTop: 12,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    statCard: {
-        flex: 1,
-        backgroundColor: '#252121',
-        borderRadius: 16,
-        paddingVertical: 16,
-        alignItems: 'center',
-        gap: 6,
-    },
-    statCardMiddle: {
-        borderLeftWidth: 0,
-        borderRightWidth: 0,
-    },
-    statValue: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontFamily: 'Inter_600SemiBold',
-    },
-    statLabel: {
-        color: '#757575',
-        fontSize: 11,
-        fontFamily: 'Inter_400Regular',
+    bannerPrepText: {
+        color: '#4CAF50',
+        fontSize: 12,
+        fontFamily: 'Urbanist_800ExtraBold',
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -451,20 +489,30 @@ const styles = StyleSheet.create({
     sectionTitle: {
         color: '#FFFFFF',
         fontSize: 18,
-        fontFamily: 'Poppins_700Bold',
+        fontFamily: 'Urbanist_700Bold',
     },
     seeAllText: {
         color: '#FF6A00',
         fontSize: 14,
-        fontFamily: 'Inter_600SemiBold',
+        fontFamily: 'Urbanist_600SemiBold',
     },
     popularCardContainer: {
-        width: 150,
-        marginTop: 15,
+        width: CARD_WIDTH,
+        marginRight: CARD_GAP,
+        marginTop: 45,
         marginBottom: 10,
     },
+    marqueeWrapper: {
+        width: '100%',
+        overflow: 'hidden',
+        paddingBottom: 20,
+    },
+    marqueeInnerRow: {
+        flexDirection: 'row',
+        paddingLeft: 20,
+    },
     popularCardOuter: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#252121',
         borderRadius: 20,
         padding: 12,
         paddingTop: 45, // space for drifting image
@@ -472,7 +520,7 @@ const styles = StyleSheet.create({
         elevation: 6,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.3,
         shadowRadius: 10,
         minHeight: 160,
         justifyContent: 'space-between'
@@ -485,11 +533,11 @@ const styles = StyleSheet.create({
         top: -40,
         alignSelf: 'center',
         borderWidth: 3,
-        borderColor: '#FFFFFF',
+        borderColor: '#252121',
         elevation: 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.3,
         shadowRadius: 8,
     },
     popularInfoContainer: {
@@ -497,16 +545,16 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     popularNameCard: {
-        color: '#1A1A1A',
+        color: '#FFFFFF',
         fontSize: 13,
-        fontFamily: 'Inter_700Bold',
+        fontFamily: 'Urbanist_700Bold',
         textAlign: 'center',
         marginBottom: 8,
     },
     popularPriceCard: {
         color: '#F36D25',
         fontSize: 16,
-        fontFamily: 'Poppins_700Bold',
+        fontFamily: 'Urbanist_700Bold',
         marginBottom: 10,
     },
     orderButtonWrap: {
@@ -527,24 +575,7 @@ const styles = StyleSheet.create({
     orderBtnText: {
         color: '#FFFFFF',
         fontSize: 11,
-        fontFamily: 'Inter_600SemiBold',
-    },
-    marqueeContainer: {
-        height: 36,
-        backgroundColor: '#252121',
-        marginVertical: 10,
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    marqueeInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    marqueeText: {
-        color: '#FF6A00',
-        fontSize: 14,
-        fontFamily: 'Inter_600SemiBold',
-        letterSpacing: 0.5,
+        fontFamily: 'Urbanist_600SemiBold',
     },
     orderNowBtnDisabled: {
         backgroundColor: '#4A4A4A',
@@ -561,14 +592,14 @@ const styles = StyleSheet.create({
     closedOverlayText: {
         color: '#FFFFFF',
         fontSize: 10,
-        fontFamily: 'Inter_700Bold',
+        fontFamily: 'Urbanist_700Bold',
         letterSpacing: 1,
         textAlign: 'center',
     },
     opensAtText: {
         color: 'rgba(255, 255, 255, 0.8)',
         fontSize: 8,
-        fontFamily: 'Inter_600SemiBold',
+        fontFamily: 'Urbanist_600SemiBold',
         marginTop: 2,
         textAlign: 'center',
     },
@@ -584,6 +615,6 @@ const styles = StyleSheet.create({
     popularClosedBadgeText: {
         color: '#FFFFFF',
         fontSize: 8,
-        fontFamily: 'Inter_800ExtraBold',
+        fontFamily: 'Urbanist_800ExtraBold',
     }
 });

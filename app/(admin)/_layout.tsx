@@ -5,41 +5,67 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
 import { useEffect, useState, useRef } from 'react';
-import { PaymentStatus, UserRole } from '../../constants/enums';
+import { PaymentStatus, UserRole, OrderStatus } from '../../constants/enums';
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
     const { user } = useAuthStore();
     const { orders, updateOrderPayment } = useOrderStore();
-    const [notification, setNotification] = useState<{ id: string, message: string } | null>(null);
+    const [notification, setNotification] = useState<{ id: string, message: string, title: string, icon: string, color: string } | null>(null);
     const slideAnim = useRef(new RNAnimated.Value(-150)).current;
+    const notifiedOrderIds = useRef<Set<string>>(new Set());
+
+    const showBanner = (data: { id: string, message: string, title: string, icon: string, color: string }) => {
+        setNotification(data);
+        RNAnimated.timing(slideAnim, {
+            toValue: insets.top + 10,
+            duration: 400,
+            easing: Easing.out(Easing.back(1.5)),
+            useNativeDriver: true,
+        }).start();
+
+        setTimeout(() => {
+            RNAnimated.timing(slideAnim, {
+                toValue: -150,
+                duration: 400,
+                useNativeDriver: true,
+            }).start(() => setNotification(null));
+        }, 4000);
+    };
 
     useEffect(() => {
-        // Find an order that was just paid but notification is not shown
+        // Check for payment confirmation
         const newPaidOrder = orders.find(o => o.paymentStatus === PaymentStatus.PAID && !o.notificationShown);
         if (newPaidOrder) {
-            // Update immediately so it doesn't trigger repeatedly
             updateOrderPayment(newPaidOrder.orderId, { notificationShown: true });
-
-            setNotification({
+            showBanner({
                 id: newPaidOrder.orderId,
-                message: `Payment Confirmed! ₹${newPaidOrder.totalAmount} received via ${newPaidOrder.paymentMethod}.`
+                message: `Payment Confirmed! ₹${newPaidOrder.totalAmount} received via ${newPaidOrder.paymentMethod}.`,
+                title: 'Payment Received',
+                icon: 'checkmark-circle',
+                color: '#4CAF50',
             });
+            return;
+        }
 
-            RNAnimated.timing(slideAnim, {
-                toValue: insets.top + 10,
-                duration: 400,
-                easing: Easing.out(Easing.back(1.5)),
-                useNativeDriver: true,
-            }).start();
+        // Check for new online orders (PENDING that we haven't notified about)
+        const newPendingOrder = orders.find(o => o.status === OrderStatus.PENDING && !notifiedOrderIds.current.has(o.orderId));
+        if (newPendingOrder && notifiedOrderIds.current.size > 0) {
+            // Only show notification after initial load (size > 0 means we've seen orders before)
+            notifiedOrderIds.current.add(newPendingOrder.orderId);
+            showBanner({
+                id: newPendingOrder.orderId,
+                message: `New order #${newPendingOrder.orderId.substring(0, 6).toUpperCase()} — ₹${newPendingOrder.totalAmount}`,
+                title: '🔔 New Order!',
+                icon: 'receipt',
+                color: '#FF6A00',
+            });
+            return;
+        }
 
-            setTimeout(() => {
-                RNAnimated.timing(slideAnim, {
-                    toValue: -150,
-                    duration: 400,
-                    useNativeDriver: true,
-                }).start(() => setNotification(null));
-            }, 4000);
+        // Track all current order IDs on initial load
+        if (notifiedOrderIds.current.size === 0 && orders.length > 0) {
+            orders.forEach(o => notifiedOrderIds.current.add(o.orderId));
         }
     }, [orders]);
 
@@ -53,35 +79,33 @@ export default function AdminLayout() {
             <Tabs
                 screenOptions={{
                     headerShown: false,
-                    tabBarShowLabel: false,
+                    tabBarShowLabel: true,
                     tabBarStyle: {
-                        position: 'absolute',
-                        backgroundColor: '#F36D25',
-                        bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 8, 16) : 20,
-                        left: 12,
-                        right: 12,
-                        height: 56,
-                        borderRadius: 28,
+                        height: Platform.OS === 'android' ? 75 + insets.bottom : 95,
+                        backgroundColor: '#121212',
                         borderTopWidth: 0,
-                        elevation: 8,
-                        shadowColor: '#F36D25',
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.35,
-                        shadowRadius: 10,
-                        paddingHorizontal: 4,
+                        paddingBottom: insets.bottom,
+                        paddingTop: 8,
+                        elevation: 0,
+                        shadowOpacity: 0,
+                        borderTopColor: 'transparent',
                     },
                     tabBarActiveTintColor: '#F36D25',
-                    tabBarInactiveTintColor: '#FFFFFF',
+                    tabBarInactiveTintColor: '#757575',
+                    tabBarLabelStyle: {
+                        fontSize: 10,
+                        fontFamily: 'Urbanist_600SemiBold',
+                        marginTop: -2,
+                        paddingBottom: Platform.OS === 'android' ? 10 : 0,
+                    },
                 }}
             >
                 <Tabs.Screen
                     name="dashboard"
                     options={{
                         title: 'Dashboard',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Ionicons name={focused ? "grid" : "grid-outline"} size={18} color={focused ? '#F36D25' : '#FFFFFF'} />
-                            </View>
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} />
                         ),
                     }}
                 />
@@ -89,10 +113,8 @@ export default function AdminLayout() {
                     name="orders"
                     options={{
                         title: 'Orders',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Ionicons name={focused ? "receipt" : "receipt-outline"} size={18} color={focused ? '#F36D25' : '#FFFFFF'} />
-                            </View>
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "receipt" : "receipt-outline"} size={22} color={color} />
                         ),
                     }}
                 />
@@ -100,10 +122,8 @@ export default function AdminLayout() {
                     name="walk-in"
                     options={{
                         title: 'New',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Ionicons name={focused ? "add-circle" : "add-circle-outline"} size={20} color={focused ? '#F36D25' : '#FFFFFF'} />
-                            </View>
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "add-circle" : "add-circle-outline"} size={24} color={color} />
                         ),
                     }}
                 />
@@ -111,10 +131,8 @@ export default function AdminLayout() {
                     name="menu-management"
                     options={{
                         title: 'Menu',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Ionicons name={focused ? "restaurant" : "restaurant-outline"} size={18} color={focused ? '#F36D25' : '#FFFFFF'} />
-                            </View>
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "restaurant" : "restaurant-outline"} size={22} color={color} />
                         ),
                     }}
                 />
@@ -122,10 +140,8 @@ export default function AdminLayout() {
                     name="analytics"
                     options={{
                         title: 'Analytics',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={18} color={focused ? '#F36D25' : '#FFFFFF'} />
-                            </View>
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={22} color={color} />
                         ),
                     }}
                 />
@@ -133,10 +149,8 @@ export default function AdminLayout() {
                     name="payment-qr"
                     options={{
                         title: 'Pay',
-                        tabBarIcon: ({ focused }) => (
-                            <View style={focused ? styles.activeIconContainer : styles.inactiveIconContainer}>
-                                <Text style={{ fontSize: 18, fontWeight: '900', color: focused ? '#F36D25' : '#FFFFFF' }}>₹</Text>
-                            </View>
+                        tabBarIcon: ({ color }) => (
+                            <Text style={{ fontSize: 22, fontWeight: '900', color }}>₹</Text>
                         ),
                     }}
                 />
@@ -150,11 +164,11 @@ export default function AdminLayout() {
 
             {/* Notification Banner Overlay */}
             <RNAnimated.View style={[styles.notificationBanner, { transform: [{ translateY: slideAnim }] }]}>
-                <View style={styles.notificationIcon}>
-                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <View style={[styles.notificationIcon, { backgroundColor: `${notification?.color || '#4CAF50'}20` }]}>
+                    <Ionicons name={(notification?.icon as any) || 'checkmark-circle'} size={24} color={notification?.color || '#4CAF50'} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.notificationTitle}>New Payment</Text>
+                    <Text style={styles.notificationTitle}>{notification?.title || 'Notification'}</Text>
                     <Text style={styles.notificationText}>{notification?.message}</Text>
                 </View>
             </RNAnimated.View>
@@ -213,6 +227,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    notificationTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_700Bold' },
-    notificationText: { color: '#A5A2A2', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    notificationTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Urbanist_700Bold' },
+    notificationText: { color: '#A5A2A2', fontSize: 13, fontFamily: 'Urbanist_400Regular', marginTop: 2 },
 });

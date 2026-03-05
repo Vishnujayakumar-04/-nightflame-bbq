@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './ui/Button';
 import { PaymentMethod } from '../constants/enums';
@@ -78,27 +78,42 @@ export function AdminPaymentModal({ visible, orderId, amount, customerName, isLo
                         </TouchableOpacity>
                     </View>
 
-                    {/* UPI Details */}
+                    {/* UPI Details & QR */}
                     {selectedMethod === PaymentMethod.UPI && (
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Transaction ID (Optional but Recommended)</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="e.g. 123456789012"
-                                placeholderTextColor="#555"
-                                value={transactionId}
-                                onChangeText={setTransactionId}
-                            />
+                        <View>
+                            {/* QR Display for Admin to show customer */}
+                            <View style={styles.qrContainer}>
+                                <View style={styles.qrWrapper}>
+                                    <Image
+                                        source={require('../assets/Payment/IMG_20260305_105900.png')}
+                                        style={styles.qrImage}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <Text style={styles.qrHint}>Customer scans this to pay</Text>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Transaction ID (Optional but Recommended)</Text>
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="e.g. 123456789012"
+                                    placeholderTextColor="#555"
+                                    value={transactionId}
+                                    onChangeText={setTransactionId}
+                                />
+                            </View>
                         </View>
                     )}
 
                     {/* Action */}
-                    <View style={{ marginTop: 24 }}>
+                    <View style={{ marginTop: 32 }}>
                         <Button
                             title="Mark as Paid"
+                            size="large"
                             onPress={handleConfirm}
                             loading={isLoading || isSubmitting}
-                            icon={<Ionicons name="checkmark-done" size={20} color="#FFFFFF" />}
+                            icon={<Ionicons name="checkmark-done" size={22} color="#FFFFFF" />}
                         />
                     </View>
 
@@ -111,7 +126,7 @@ export function AdminPaymentModal({ visible, orderId, amount, customerName, isLo
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)',
+        backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'flex-end',
     },
     content: {
@@ -184,5 +199,29 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: 'Inter_400Regular',
         fontSize: 15
+    },
+    qrContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+        backgroundColor: '#2A2525',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#353030'
+    },
+    qrWrapper: {
+        backgroundColor: '#FFFFFF',
+        padding: 8,
+        borderRadius: 12,
+        marginBottom: 8
+    },
+    qrImage: {
+        width: 180,
+        height: 180
+    },
+    qrHint: {
+        color: '#A5A2A2',
+        fontSize: 12,
+        fontFamily: 'Inter_400Regular'
     }
 });

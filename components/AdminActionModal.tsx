@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Order} from '../types/models';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Order } from '../types/models';
 import { Button } from './ui/Button';
 import { OrderStatus, PaymentStatus } from '../constants/enums';
 
@@ -27,50 +28,70 @@ export function AdminActionModal({
 
         if (status === OrderStatus.PENDING) {
             return (
-                <Button
-                    title="Accept Order"
+                <TouchableOpacity
+                    style={styles.actionBtn}
                     onPress={() => onUpdateStatus(orderId, OrderStatus.ACCEPTED)}
-                    icon={<Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />}
-                />
+                >
+                    <LinearGradient colors={['#FF6A00', '#E53B0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                        <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" />
+                        <Text style={styles.actionBtnText}>Accept Order</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
             );
         }
 
         if (status === OrderStatus.ACCEPTED) {
             return (
-                <Button
-                    title="Start Preparing"
+                <TouchableOpacity
+                    style={styles.actionBtn}
                     onPress={() => onUpdateStatus(orderId, OrderStatus.PREPARING)}
-                    icon={<Ionicons name="flame-outline" size={20} color="#FFF" />}
-                />
+                >
+                    <LinearGradient colors={['#FF6A00', '#E53B0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                        <Ionicons name="flame-outline" size={22} color="#FFF" />
+                        <Text style={styles.actionBtnText}>Start Preparing</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
             );
         }
 
         if (status === OrderStatus.PREPARING) {
             return (
-                <Button
-                    title="Mark as Ready"
+                <TouchableOpacity
+                    style={styles.actionBtn}
                     onPress={() => onUpdateStatus(orderId, OrderStatus.READY)}
-                    icon={<Ionicons name="restaurant-outline" size={20} color="#FFF" />}
-                />
+                >
+                    <LinearGradient colors={['#FF6A00', '#E53B0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                        <Ionicons name="restaurant-outline" size={22} color="#FFF" />
+                        <Text style={styles.actionBtnText}>Mark as Ready</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
             );
         }
 
         if (status === OrderStatus.READY) {
             if (paymentStatus !== PaymentStatus.PAID) {
                 return (
-                    <Button
-                        title="Collect Payment"
+                    <TouchableOpacity
+                        style={styles.actionBtn}
                         onPress={() => onCollectPayment(order)}
-                        icon={<Ionicons name="cash-outline" size={20} color="#FFF" />}
-                    />
+                    >
+                        <LinearGradient colors={['#FF6A00', '#E53B0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                            <Ionicons name="cash-outline" size={22} color="#FFF" />
+                            <Text style={styles.actionBtnText}>Collect Payment</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 );
             } else {
                 return (
-                    <Button
-                        title="Complete Order"
+                    <TouchableOpacity
+                        style={styles.actionBtn}
                         onPress={() => onUpdateStatus(orderId, OrderStatus.COMPLETED)}
-                        icon={<Ionicons name="checkmark-done" size={20} color="#FFF" />}
-                    />
+                    >
+                        <LinearGradient colors={['#4CAF50', '#388E3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                            <Ionicons name="checkmark-done" size={22} color="#FFF" />
+                            <Text style={styles.actionBtnText}>Complete Order</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 );
             }
         }
@@ -114,7 +135,7 @@ export function AdminActionModal({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'flex-end',
     },
     content: {
@@ -178,6 +199,16 @@ const styles = StyleSheet.create({
     buttonContainer: {
         marginTop: 4,
     },
+    actionBtn: {
+        width: '100%',
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    actionGradient: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        paddingVertical: 16, borderRadius: 14,
+    },
+    actionBtnText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
     completedText: {
         color: '#A5A2A2',
         fontSize: 14,

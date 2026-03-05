@@ -2,13 +2,13 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useMemo } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Order} from '../../types/models';
+import { Order } from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useOrderStore } from '../../store/orderStore';
-import { LinearGradient } from 'expo-linear-gradient';
 import { OrderStatus, PaymentStatus } from '../../constants/enums';
 
 const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
@@ -98,55 +98,56 @@ export default function MyOrdersScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>My Orders</Text>
-            </View>
-
-            {/* Tabs */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'active' && styles.tabActive]}
-                    onPress={() => setActiveTab('active')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
-                        Active ({activeOrders.length})
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'past' && styles.tabActive]}
-                    onPress={() => setActiveTab('past')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
-                        Past ({pastOrders.length})
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {isLoading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#FF6A00" />
+        <LinearGradient colors={['#1A1818', '#1D1510']} style={styles.container}>
+            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>My Orders</Text>
                 </View>
-            ) : displayOrders.length === 0 ? (
-                renderEmptyState()
-            ) : (
-                <FlatList
-                    data={displayOrders}
-                    keyExtractor={(item) => item.orderId}
-                    renderItem={renderOrderItem}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                    showsVerticalScrollIndicator={false}
-                />
-            )}
-        </SafeAreaView>
+
+                {/* Tabs */}
+                <View style={styles.tabContainer}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+                        onPress={() => setActiveTab('active')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+                            Active ({activeOrders.length})
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'past' && styles.tabActive]}
+                        onPress={() => setActiveTab('past')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+                            Past ({pastOrders.length})
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FF6A00" />
+                    </View>
+                ) : true || displayOrders.length === 0 ? (
+                    renderEmptyState()
+                ) : (
+                    <FlatList
+                        data={displayOrders}
+                        keyExtractor={(item) => item.orderId}
+                        renderItem={renderOrderItem}
+                        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                        showsVerticalScrollIndicator={false}
+                    />
+                )}
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1A1818',
     },
     header: {
         paddingHorizontal: 20,

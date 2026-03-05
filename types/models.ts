@@ -35,6 +35,8 @@ export interface Order {
     customerName?: string; // name for walk-ins
     items: CartItem[];
     totalAmount: number;
+    orderNumber: string;
+    runningNumber: number;
     status: OrderStatus;
 
     // Hardened Payment Schema

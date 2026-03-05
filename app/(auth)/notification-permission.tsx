@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable, Image, Dimensions } from 'react-nati
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-// import * as Notifications from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
@@ -11,8 +11,11 @@ export default function NotificationPermissionScreen() {
     const router = useRouter();
 
     const requestPermission = async () => {
-        // const { status } = await Notifications.requestPermissionsAsync();
-        // Regardless of permission status, we move to home page as this is an onboarding step
+        try {
+            await Notifications.requestPermissionsAsync();
+        } catch (e) {
+            // Silently handle — permission may not be available
+        }
         router.replace('/(customer)/home');
     };
 

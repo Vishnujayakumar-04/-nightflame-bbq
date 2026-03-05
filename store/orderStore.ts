@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db } from '../firebaseConfig';
-import { collection, doc, query, orderBy, where, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, where, onSnapshot, setDoc, updateDoc, runTransaction, getDoc } from 'firebase/firestore';
 import { Order } from '../types/models';
 import { useAuthStore } from './authStore';
 import { OrderStatus, PaymentStatus, PaymentMethod, UserRole } from '../constants/enums';
@@ -64,34 +64,65 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     placeOrder: async (orderData) => {
         try {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`; // YYYYMMDD
+
+            const counterId = `orders_${dateStr}`;
+            const counterRef = doc(db, 'counters', counterId);
             const orderRef = doc(collection(db, 'orders'));
 
-            // Auto calculate estimated pickup time based on max preparation time
-            let maxPrepTimeMinutes = 15; // default
-            orderData.items.forEach(cartItem => {
-                if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTimeMinutes) {
-                    maxPrepTimeMinutes = cartItem.menuItem.preparationTime;
+            const result = await runTransaction(db, async (transaction) => {
+                const counterDoc = await transaction.get(counterRef);
+                let runningNumber = 1;
+
+                if (counterDoc.exists()) {
+                    runningNumber = counterDoc.data().lastOrderNumber + 1;
+                    transaction.update(counterRef, { lastOrderNumber: runningNumber });
+                } else {
+                    transaction.set(counterRef, {
+                        date: dateStr,
+                        lastOrderNumber: runningNumber
+                    });
                 }
+
+                // Format: NF-YYYYMMDD-XXX
+                const paddedNumber = String(runningNumber).padStart(3, '0');
+                const orderNumber = `NF-${dateStr}-${paddedNumber}`;
+
+                // Auto calculate estimated pickup time based on max preparation time
+                let maxPrepTimeMinutes = 15;
+                orderData.items.forEach(cartItem => {
+                    if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTimeMinutes) {
+                        maxPrepTimeMinutes = cartItem.menuItem.preparationTime;
+                    }
+                });
+
+                const estimatedPickupTime = Date.now() + (maxPrepTimeMinutes * 60000);
+
+                const newOrder: Order = {
+                    ...orderData,
+                    orderId: orderRef.id,
+                    orderNumber,
+                    runningNumber,
+                    status: OrderStatus.PENDING,
+                    estimatedPickupTime,
+                    timestamp: Date.now(),
+                    notificationShown: false,
+                    isLocked: false,
+                    lockedBy: null
+                };
+
+                transaction.set(orderRef, newOrder);
+                return { orderId: orderRef.id, orderNumber };
             });
 
-            const estimatedPickupTime = Date.now() + (maxPrepTimeMinutes * 60000);
-
-            const newOrder: Order = {
-                ...orderData,
-                orderId: orderRef.id,
-                status: OrderStatus.PENDING,
-                estimatedPickupTime,
-                timestamp: Date.now(),
-                notificationShown: false,
-                isLocked: false,
-                lockedBy: null
-            };
-
-            await setDoc(orderRef, newOrder);
-            return newOrder.orderId;
+            return result.orderId;
         } catch (e: any) {
             console.error("Failed to place order", e);
-            throw new Error("Failed to place order.");
+            throw new Error(e.message || "Failed to place order.");
         }
     },
 
@@ -127,7 +158,6 @@ export const useOrderStore = create<OrderState>((set) => ({
                 paymentStatus: PaymentStatus.PAID,
                 paymentMethod,
                 paidAt: Date.now(),
-                status: OrderStatus.PENDING, // Move to pending once confirmed
                 isLocked: false,
                 lockedBy: null
             };
