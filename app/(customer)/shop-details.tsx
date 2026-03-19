@@ -11,7 +11,7 @@ const { width } = Dimensions.get('window');
 const PHOTO_WIDTH = width * 0.72;
 const PHOTO_GAP = 12;
 
-const SHOP_NAME = 'NightFlame BBQ';
+const SHOP_NAME = 'Barquee grill station';
 const SHOP_TAGLINE = 'Where Flavor Meets Fire';
 const SHOP_ADDRESS = 'Villianur Main Rd, beside of kv.tex, Natesan Nagar, Puducherry, 605005';
 const SHOP_PHONE = '+919894402440';
@@ -56,7 +56,7 @@ export default function ShopDetailsScreen() {
                             style={s.heroBg}
                         />
                         <View style={s.logoRing}>
-                            <Image source={require('../../assets/LOGO.png')} style={s.logo} resizeMode="contain" />
+                            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
                         </View>
                         <Text style={s.shopName}>{SHOP_NAME}</Text>
                         <Text style={s.tagline}>{SHOP_TAGLINE}</Text>
@@ -139,7 +139,7 @@ export default function ShopDetailsScreen() {
                     </View>
                     <Animated.View entering={FadeInDown.duration(400).delay(300)} style={s.card}>
                         <Text style={s.storyText}>
-                            NightFlame BBQ brings you the authentic taste of flame-grilled chicken and smoky BBQ flavors.
+                            Barquee grill station brings you the authentic taste of flame-grilled chicken and smoky BBQ flavors.
                             Our passion for perfectly seasoned, charcoal-cooked meat drives everything we do.
                         </Text>
                         <Text style={[s.storyText, { marginTop: 12 }]}>

@@ -88,9 +88,9 @@ export const useOrderStore = create<OrderState>((set) => ({
                     });
                 }
 
-                // Format: NF-YYYYMMDD-XXX
+                // Format: BQ-YYYYMMDD-XXX
                 const paddedNumber = String(runningNumber).padStart(3, '0');
-                const orderNumber = `NF-${dateStr}-${paddedNumber}`;
+                const orderNumber = `BQ-${dateStr}-${paddedNumber}`;
 
                 // Auto calculate estimated pickup time based on max preparation time
                 let maxPrepTimeMinutes = 15;

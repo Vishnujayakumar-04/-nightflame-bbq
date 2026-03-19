@@ -8,6 +8,16 @@ import {
     Urbanist_700Bold,
     Urbanist_800ExtraBold
 } from "@expo-google-fonts/urbanist";
+import {
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
+} from "@expo-google-fonts/inter";
+import {
+    Poppins_400Regular,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+} from "@expo-google-fonts/poppins";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./global.css";
 import { useAuthStore } from "../store/authStore";
@@ -22,7 +32,14 @@ export default function RootLayout() {
         Urbanist_600SemiBold,
         Urbanist_700Bold,
         Urbanist_800ExtraBold,
+        Inter_400Regular,
+        Inter_600SemiBold,
+        Inter_700Bold,
+        Poppins_400Regular,
+        Poppins_600SemiBold,
+        Poppins_700Bold,
     });
+
 
     useEffect(() => {
         if (loaded || error) {

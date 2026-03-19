@@ -12,6 +12,7 @@ import { collection, doc, deleteDoc, writeBatch, getDocs } from 'firebase/firest
 
 const formatCurrency = (amount: number) => `₹${amount}`;
 
+
 const CATEGORIES = ['All', 'BBQ', 'Wings', 'Combo'];
 
 export default function MenuManagementScreen() {
@@ -49,6 +50,39 @@ export default function MenuManagementScreen() {
         ]);
     };
 
+    const handleRemoveDuplicates = async () => {
+        Alert.alert('Remove Duplicates', 'Are you sure you want to remove duplicate menu items based on name?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Remove', style: 'destructive',
+                onPress: async () => {
+                    try {
+                        const batch = writeBatch(db);
+                        const seen = new Set();
+                        let count = 0;
+                        menuItems.forEach(item => {
+                            if (seen.has(item.name)) {
+                                batch.delete(doc(db, 'menuItems', item.itemId));
+                                count++;
+                            } else {
+                                seen.add(item.name);
+                            }
+                        });
+
+                        if (count > 0) {
+                            await batch.commit();
+                            Alert.alert('Success', `Removed ${count} duplicate items`);
+                        } else {
+                            Alert.alert('Info', 'No duplicate items found');
+                        }
+                    } catch (e: any) {
+                        Alert.alert('Error', `Failed to remove duplicates: ${e.message}`);
+                    }
+                }
+            }
+        ]);
+    };
+
     const handleSeedMenu = async () => {
         Alert.alert('Seed Menu', 'This will wipe all existing menu items and replace them with the default list. Continue?', [
             { text: 'Cancel', style: 'cancel' },
@@ -71,7 +105,7 @@ export default function MenuManagementScreen() {
                             { name: 'Grill Mix Combo', price: 339, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['1 Leg (140)', 'Drumstick 2pcs (120)', 'Wings (120)'], description: 'Variety mix' },
                             { name: 'Mini Party Combo', price: 359, preparationTime: 20, category: 'Combo', available: true, isCombo: true, comboItems: ['Leg (140)', 'Wings (120)', 'Lollipop (120)'], description: 'For small gatherings' },
                             { name: 'Family Combo', price: 579, preparationTime: 25, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs (280)', 'Wings (120)', 'Lollipop (120)', 'Drumstick (120)'], description: 'Mega family pack' },
-                            { name: 'NightFlame Mega Grill', price: 799, preparationTime: 30, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs (280)', '2 Thighs (280)', 'Wings (120)', 'Lollipop (120)', 'Drumstick (120)'], description: 'The absolute feast' },
+                            { name: 'Barquee Mega Grill', price: 799, preparationTime: 30, category: 'Combo', available: true, isCombo: true, comboItems: ['2 Legs (280)', '2 Thighs (280)', 'Wings (120)', 'Lollipop (120)', 'Drumstick (120)'], description: 'The absolute feast' },
                         ];
 
                         actualMenu.forEach(item => {
@@ -176,7 +210,7 @@ export default function MenuManagementScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.setupTitle}>Setup Your Shop</Text>
-                        <Text style={styles.setupSubtitle}>Quickly add your official NightFlame items, prices, and combos.</Text>
+                        <Text style={styles.setupSubtitle}>Quickly add your official Barquee Grill items, prices, and combos.</Text>
                     </View>
                     <TouchableOpacity style={styles.setupActionBtn} onPress={handleSeedMenu}>
                         <Text style={styles.setupActionText}>Start</Text>
@@ -184,6 +218,14 @@ export default function MenuManagementScreen() {
                 </Animated.View>
             ) : (
                 <Text style={styles.itemCount}>{filteredItems.length} items</Text>
+            )}
+
+            {/* Remove Duplicates Action */}
+            {menuItems.length > 0 && (
+                <TouchableOpacity style={styles.deduplicateBtn} onPress={handleRemoveDuplicates}>
+                    <Ionicons name="trash-bin-outline" size={14} color="#EF5350" />
+                    <Text style={styles.deduplicateText}>Remove Duplicates</Text>
+                </TouchableOpacity>
             )}
 
             {/* Menu Items List */}
@@ -286,4 +328,10 @@ const styles = StyleSheet.create({
         elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
     },
     setupActionText: { color: '#F36D25', fontSize: 14, fontFamily: 'Urbanist_800ExtraBold' },
+    deduplicateBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        marginHorizontal: 20, marginBottom: 12, paddingVertical: 10, borderRadius: 10,
+        backgroundColor: 'rgba(239, 83, 80, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 83, 80, 0.3)',
+    },
+    deduplicateText: { color: '#EF5350', fontSize: 13, fontFamily: 'Urbanist_600SemiBold' },
 });

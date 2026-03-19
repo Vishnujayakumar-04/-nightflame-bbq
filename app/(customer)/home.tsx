@@ -179,7 +179,7 @@ export default function HomeScreen() {
                             onPress={() => router.push('/(customer)/shop-details')}
                         >
                             <Image
-                                source={require('../../assets/LOGO.png')}
+                                source={require('../../assets/logo.png')}
                                 style={styles.shopBtnImage}
                                 resizeMode="cover"
                             />

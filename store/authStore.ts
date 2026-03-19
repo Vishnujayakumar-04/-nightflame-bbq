@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             if (docSnap.exists()) {
                 const existingData = docSnap.data() as User;
-                await AsyncStorage.setItem('nightflame_session', JSON.stringify(existingData));
+                await AsyncStorage.setItem('barquee_session', JSON.stringify(existingData));
                 set({ isLoading: false, user: existingData, error: null });
                 return false; // Not a new user
             } else {
@@ -113,7 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 role: UserRole.CUSTOMER
             };
             await setDoc(userRef, userData);
-            await AsyncStorage.setItem('nightflame_session', JSON.stringify(userData));
+            await AsyncStorage.setItem('barquee_session', JSON.stringify(userData));
             set({
                 isLoading: false,
                 user: userData,
@@ -147,7 +147,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 createdAt: Date.now(),
                 role: UserRole.ADMIN
             };
-            await AsyncStorage.setItem('nightflame_session', JSON.stringify(adminUser));
+            await AsyncStorage.setItem('barquee_session', JSON.stringify(adminUser));
             set({
                 isLoading: false,
                 user: adminUser,
@@ -164,7 +164,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: true });
         try {
             await firebaseSignOut(auth);
-            await AsyncStorage.removeItem('nightflame_session');
+            await AsyncStorage.removeItem('barquee_session');
             set({ user: null, verificationId: null, isLoading: false, error: null });
         } catch {
             set({ isLoading: false });
@@ -211,7 +211,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     loadSession: async () => {
         try {
-            const session = await AsyncStorage.getItem('nightflame_session');
+            const session = await AsyncStorage.getItem('barquee_session');
             if (session) {
                 set({ user: JSON.parse(session), isInitializing: false });
             } else {

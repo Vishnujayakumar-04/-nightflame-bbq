@@ -1,5 +1,5 @@
 export const AppStrings = {
-    appName: 'NightFlame BBQ',
+    appName: 'Barquee grill station',
     tagline: 'Pre-order. Pick up. Feel the Flame.',
 
     // Welcome

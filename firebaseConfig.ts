@@ -4,7 +4,7 @@ import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
 
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: "AIzaSyBcWWL3TFYHHtSU14ZozUzegmEtJd_Kx3w",
     authDomain: "nightflame-bbq.firebaseapp.com",
     projectId: "nightflame-bbq",

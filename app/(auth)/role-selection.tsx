@@ -54,7 +54,7 @@ export default function RoleSelectionScreen() {
                 {/* Centered Logo */}
                 <Animated.View entering={FadeIn.duration(800)} style={styles.logoWrapper}>
                     <Image
-                        source={require('../../assets/LOGO.png')}
+                        source={require('../../assets/logo.png')}
                         style={styles.centerLogo}
                         resizeMode="contain"
                     />

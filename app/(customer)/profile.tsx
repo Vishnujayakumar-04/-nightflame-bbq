@@ -12,7 +12,7 @@ import { useCartStore } from '../../store/cartStore';
 
 
 const SHOP_PHONE = '+919876543210';
-const SHOP_EMAIL = 'nightflamebbq@example.com';
+const SHOP_EMAIL = 'barqueegrillstation@example.com';
 
 function ProfileScreen() {
     const router = useRouter();
@@ -213,7 +213,7 @@ function ProfileScreen() {
                     {/* Footer */}
                     <View style={styles.footer}>
 
-                        <Text style={styles.footerText}>NightFlame BBQ</Text>
+                        <Text style={styles.footerText}>Barquee grill station</Text>
                         <Text style={styles.footerVersion}>Version 1.0.0</Text>
                     </View>
 
@@ -255,9 +255,9 @@ function ProfileScreen() {
                                     <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FF6A00" />
                                     <Text style={styles.drawerNavText}>Support & Help</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.drawerNavItem} onPress={() => { setShowMenu(false); Alert.alert('About NightFlame BBQ', 'NightFlame BBQ brings you authentic wood-fired flavors.\n\nVersion: 1.0.0\n\n📍 Villianur Main Rd, Puducherry'); }}>
+                                <TouchableOpacity style={styles.drawerNavItem} onPress={() => { setShowMenu(false); Alert.alert('About Barquee grill station', 'Barquee grill station brings you authentic wood-fired flavors.\n\nVersion: 1.0.0\n\n📍 Villianur Main Rd, Puducherry'); }}>
                                     <Ionicons name="information-circle-outline" size={22} color="#FF6A00" />
-                                    <Text style={styles.drawerNavText}>About NightFlame</Text>
+                                    <Text style={styles.drawerNavText}>About Barquee grill</Text>
                                 </TouchableOpacity>
                             </View>
 

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "nightflame-expo",
-    "slug": "nightflame-bbq",
-    "scheme": "nightflame",
+    "name": "barquee-grill-station",
+    "slug": "barquee-grill-station",
+    "scheme": "barqueegrillstation",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nightflame.bbq"
+      "bundleIdentifier": "com.barqueegrillstation.app"
     },
     "android": {
-      "package": "com.nightflame.bbq",
+      "package": "com.barqueegrillstation.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -37,7 +37,6 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-notifications",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       [
