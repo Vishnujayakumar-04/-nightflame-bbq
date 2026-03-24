@@ -23,9 +23,12 @@ export function AdminActionModal({
 }: AdminActionModalProps) {
     if (!order) return null;
 
+    const isWalkIn = order.userId === 'walk-in';
+
     const renderAction = () => {
         const { status, paymentStatus, orderId } = order;
 
+        // === PENDING: Accept Order (same for all) ===
         if (status === OrderStatus.PENDING) {
             return (
                 <TouchableOpacity
@@ -40,7 +43,39 @@ export function AdminActionModal({
             );
         }
 
+        // === ACCEPTED ===
         if (status === OrderStatus.ACCEPTED) {
+            if (isWalkIn) {
+                // Walk-in shortcut: Accept → Collect Payment directly
+                if (paymentStatus !== PaymentStatus.PAID) {
+                    return (
+                        <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => onCollectPayment(order)}
+                        >
+                            <LinearGradient colors={['#FF6A00', '#E53B0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                                <Ionicons name="cash-outline" size={22} color="#FFF" />
+                                <Text style={styles.actionBtnText}>Collect Payment</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    );
+                } else {
+                    // Walk-in + Paid → Complete directly
+                    return (
+                        <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => onUpdateStatus(orderId, OrderStatus.COMPLETED)}
+                        >
+                            <LinearGradient colors={['#4CAF50', '#388E3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.actionGradient}>
+                                <Ionicons name="checkmark-done" size={22} color="#FFF" />
+                                <Text style={styles.actionBtnText}>Complete Order</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    );
+                }
+            }
+
+            // Regular order: proceed to Preparing
             return (
                 <TouchableOpacity
                     style={styles.actionBtn}
@@ -54,6 +89,7 @@ export function AdminActionModal({
             );
         }
 
+        // === PREPARING (Regular orders only — walk-ins skip this) ===
         if (status === OrderStatus.PREPARING) {
             return (
                 <TouchableOpacity
@@ -68,6 +104,7 @@ export function AdminActionModal({
             );
         }
 
+        // === READY ===
         if (status === OrderStatus.READY) {
             if (paymentStatus !== PaymentStatus.PAID) {
                 return (
@@ -110,7 +147,14 @@ export function AdminActionModal({
                     <View style={styles.handle} />
 
                     <View style={styles.header}>
-                        <Text style={styles.title}>Order #{order.orderId.substring(0, 5).toUpperCase()}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={styles.title}>Order #{order.orderId.substring(0, 5).toUpperCase()}</Text>
+                            {isWalkIn && (
+                                <View style={styles.walkInTag}>
+                                    <Text style={styles.walkInTagText}>Walk-in</Text>
+                                </View>
+                            )}
+                        </View>
                         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                             <Ionicons name="close" size={24} color="#757575" />
                         </TouchableOpacity>
@@ -166,6 +210,13 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontFamily: 'Inter_700Bold',
     },
+    walkInTag: {
+        backgroundColor: 'rgba(255, 193, 7, 0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    walkInTagText: { color: '#FFC107', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
     detailsBox: {
         backgroundColor: '#252121',
         padding: 16,
@@ -217,4 +268,3 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     }
 });
-

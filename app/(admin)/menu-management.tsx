@@ -1,4 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, ScrollView, Switch, Image, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, Switch, StyleSheet, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -126,7 +127,7 @@ export default function MenuManagementScreen() {
     const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
         <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={[styles.menuCard, !item.available && { opacity: 0.65 }]}>
             {item.imageUrl ? (
-                <Image source={{ uri: item.imageUrl }} style={styles.menuImage} resizeMode="cover" />
+                <Image source={{ uri: item.imageUrl }} style={styles.menuImage} contentFit="cover" cachePolicy="memory-disk" />
             ) : (
                 <View style={[styles.menuImage, styles.placeholderImage]}>
                     <Ionicons name="restaurant" size={24} color="#555" />

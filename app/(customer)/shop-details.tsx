@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +57,7 @@ export default function ShopDetailsScreen() {
                             style={s.heroBg}
                         />
                         <View style={s.logoRing}>
-                            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
+                            <Image source={require('../../assets/logo.png')} style={s.logo} contentFit="contain" cachePolicy="memory-disk" />
                         </View>
                         <Text style={s.shopName}>{SHOP_NAME}</Text>
                         <Text style={s.tagline}>{SHOP_TAGLINE}</Text>
@@ -94,7 +95,7 @@ export default function ShopDetailsScreen() {
                                 entering={ZoomIn.duration(400).delay(idx * 150).springify()}
                                 style={{ marginRight: idx < SHOP_PHOTOS.length - 1 ? PHOTO_GAP : 0 }}
                             >
-                                <Image source={photo} style={s.galleryImg} resizeMode="cover" />
+                                <Image source={photo} style={s.galleryImg} contentFit="cover" cachePolicy="memory-disk" />
                             </Animated.View>
                         ))}
                     </ScrollView>

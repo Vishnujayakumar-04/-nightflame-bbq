@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useEffect } from 'react';
@@ -29,7 +29,7 @@ const FILTERS = ['All', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed
 type FilterType = typeof FILTERS[number];
 
 export default function AdminOrdersScreen() {
-    const { orders, subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
+    const { orders, isLoading, subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
     const [activeFilter, setActiveFilter] = useState<FilterType>('All');
     const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Order | null>(null);
     const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
@@ -76,8 +76,10 @@ export default function AdminOrdersScreen() {
         return orders.filter(o => o.status !== OrderStatus.COMPLETED);
     }, [orders]);
 
-
-
+    const filteredOrders = useMemo(() => {
+        if (activeFilter === 'All') return orders;
+        return orders.filter(o => o.status === activeFilter.toLowerCase());
+    }, [orders, activeFilter]);
     const getFilterCount = (filter: FilterType) => {
         if (filter === 'All') return orders.length;
         return orders.filter(o => o.status === filter.toLowerCase()).length;
@@ -108,7 +110,10 @@ export default function AdminOrdersScreen() {
 
                 <Text style={styles.customerName}>{item.customerName || 'Customer'}</Text>
                 <Text style={styles.itemsList} numberOfLines={1}>
-                    {item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ')}
+                    {item.items.map(i => {
+                        const addonStr = i.selectedAddOns?.map(a => `${a.quantity}x ${a.name}`).join(', ');
+                        return `${i.menuItem.name} ×${i.quantity}${addonStr ? ` (+ ${addonStr})` : ''}`;
+                    }).join(' | ')}
                 </Text>
 
                 <View style={styles.cardFooter}>
@@ -165,11 +170,15 @@ export default function AdminOrdersScreen() {
                 </ScrollView>
             </View>
 
-            {/* Orders List */}
-            <FlatList
-                data={[]}
-                keyExtractor={item => item.orderId}
-                renderItem={renderOrderCard}
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#FF6A00" />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredOrders}
+                    keyExtractor={item => item.orderId}
+                    renderItem={renderOrderCard}
                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -180,6 +189,7 @@ export default function AdminOrdersScreen() {
                     </View>
                 }
             />
+            )}
 
             {selectedOrderForPayment && (
                 <AdminPaymentModal
@@ -285,4 +295,5 @@ const styles = StyleSheet.create({
     amount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter_700Bold' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 12 },
     emptyText: { color: '#757575', fontSize: 16, fontFamily: 'Inter_400Regular' },
+    loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

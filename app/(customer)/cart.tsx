@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable, StyleSheet, PanResponder } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo, useEffect } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, withSequence, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
 
 import { AppStrings } from '../../constants/Strings';
 import { useCartStore } from '../../store/cartStore';
@@ -22,10 +23,209 @@ const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
+const SLIDER_HEIGHT = 60;
+const THUMB_SIZE = 52;
+
+const SlideToOrder = ({ onComplete }: { onComplete: () => void }) => {
+    const translateX = useSharedValue(0);
+    const isCompleted = useSharedValue(0);
+    const hintOpacity = useSharedValue(1);
+    const [trackWidth, setTrackWidth] = useState(0);
+    const maxSlideRef = useRef(200);
+
+    // Keep the ref in sync with trackWidth
+    useEffect(() => {
+        if (trackWidth > 0) {
+            maxSlideRef.current = trackWidth - THUMB_SIZE - 8;
+        }
+    }, [trackWidth]);
+
+    // Start pulsing hint arrows
+    useEffect(() => {
+        hintOpacity.value = withRepeat(
+            withSequence(
+                withTiming(0.3, { duration: 800 }),
+                withTiming(1, { duration: 800 }),
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const handleComplete = useCallback(() => {
+        onComplete();
+    }, [onComplete]);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5,
+            onPanResponderMove: (_, gestureState) => {
+                const max = maxSlideRef.current;
+                const newX = Math.max(0, Math.min(gestureState.dx, max));
+                translateX.value = newX;
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                const max = maxSlideRef.current;
+                const threshold = max * 0.8;
+                if (gestureState.dx >= threshold) {
+                    translateX.value = withSpring(max);
+                    isCompleted.value = withTiming(1, { duration: 300 });
+                    runOnJS(handleComplete)();
+                } else {
+                    translateX.value = withSpring(0, { damping: 15, stiffness: 150 });
+                }
+            },
+        })
+    ).current;
+
+    const thumbStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: translateX.value }],
+    }));
+
+    const hintStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(
+            translateX.value,
+            [0, 60],
+            [hintOpacity.value, 0],
+            Extrapolation.CLAMP
+        ),
+    }));
+
+    const textStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(
+            translateX.value,
+            [0, 80],
+            [1, 0],
+            Extrapolation.CLAMP
+        ),
+    }));
+
+    const checkStyle = useAnimatedStyle(() => ({
+        opacity: isCompleted.value,
+        transform: [{ scale: interpolate(isCompleted.value, [0, 1], [0.5, 1], Extrapolation.CLAMP) }],
+    }));
+
+    return (
+        <View
+            style={sliderStyles.container}
+            onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        >
+            <LinearGradient
+                colors={['rgba(255,106,0,0.15)', 'rgba(229,59,10,0.08)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={sliderStyles.track}
+            >
+                {/* Hint arrows */}
+                <Animated.View style={[sliderStyles.hintContainer, hintStyle]}>
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,106,0,0.4)" />
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,106,0,0.6)" style={{ marginLeft: -6 }} />
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,106,0,0.8)" style={{ marginLeft: -6 }} />
+                </Animated.View>
+
+                {/* Text label */}
+                <Animated.Text style={[sliderStyles.label, textStyle]}>
+                    Slide to Place Order
+                </Animated.Text>
+
+                {/* Success check */}
+                <Animated.View style={[sliderStyles.checkContainer, checkStyle]}>
+                    <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                    <Text style={sliderStyles.checkText}>Order Placed!</Text>
+                </Animated.View>
+
+                {/* Draggable Thumb */}
+                <Animated.View
+                    style={[sliderStyles.thumb, thumbStyle]}
+                    {...panResponder.panHandlers}
+                >
+                    <LinearGradient
+                        colors={['#FF6A00', '#E53B0A']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={sliderStyles.thumbGradient}
+                    >
+                        <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+                    </LinearGradient>
+                </Animated.View>
+            </LinearGradient>
+        </View>
+    );
+};
+
+const sliderStyles = StyleSheet.create({
+    container: {
+        marginTop: 20,
+        height: SLIDER_HEIGHT,
+        width: '100%',
+    },
+    track: {
+        flex: 1,
+        borderRadius: 30,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,106,0,0.3)',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        paddingHorizontal: 4,
+    },
+    thumb: {
+        position: 'absolute',
+        left: 4,
+        top: 4,
+        width: THUMB_SIZE,
+        height: THUMB_SIZE,
+        borderRadius: THUMB_SIZE / 2,
+        zIndex: 10,
+    },
+    thumbGradient: {
+        width: '100%',
+        height: '100%',
+        borderRadius: THUMB_SIZE / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 6,
+        shadowColor: '#FF6A00',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+    },
+    label: {
+        color: '#FF6A00',
+        fontSize: 15,
+        fontFamily: 'Inter_700Bold',
+        textAlign: 'center',
+        letterSpacing: 0.5,
+    },
+    hintContainer: {
+        position: 'absolute',
+        left: THUMB_SIZE + 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    checkContainer: {
+        position: 'absolute',
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    checkText: {
+        color: '#4CAF50',
+        fontSize: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+});
+
 export default function CartScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { items, incrementQuantity, decrementQuantity, getCartTotal, getItemCount, clearCart } = useCartStore();
+    const items = useCartStore(state => state.items);
+    const incrementQuantity = useCartStore(state => state.incrementQuantity);
+    const decrementQuantity = useCartStore(state => state.decrementQuantity);
+    const getCartTotal = useCartStore(state => state.getCartTotal);
+    const getItemCount = useCartStore(state => state.getItemCount);
+    const clearCart = useCartStore(state => state.clearCart);
 
     const [selectedTime, setSelectedTime] = useState<Date | null>(null);
     const [isTimePickerVisible, setTimePickerVisible] = useState(false);
@@ -51,24 +251,26 @@ export default function CartScreen() {
         const now = new Date();
 
         // Helper to parse "06:00 PM" into minutes from midnight
-        const parseTimeStr = (timeStr: string | undefined) => {
-            if (!timeStr) return 0;
+        const parseTimeStr = (timeStr: string | undefined, fallback: number) => {
+            if (!timeStr) return fallback;
             try {
                 const [time, modifier] = timeStr.split(' ');
                 const parts = time.split(':').map(Number);
                 let hours = parts[0];
-                const minutes = parts[1];
-                if (modifier === 'PM' && hours < 12) hours += 12;
-                if (modifier === 'AM' && hours === 12) hours = 0;
+                const minutes = parts[1] || 0;
+                if (modifier?.toUpperCase() === 'PM' && hours < 12) hours += 12;
+                if (modifier?.toUpperCase() === 'AM' && hours === 12) hours = 0;
                 return hours * 60 + minutes;
             } catch {
-                return 0;
+                return fallback;
             }
         };
 
-        const openMin = parseTimeStr(status?.openTime);
-        const closeMin = parseTimeStr(status?.closeTime);
+        // Default: 6 PM open, 11 PM close
+        const openMin = parseTimeStr(status?.openTime, 18 * 60);
+        const closeMin = parseTimeStr(status?.closeTime, 23 * 60);
 
+        // Calculate max prep time from cart items
         let maxPrepTime = 15;
         items.forEach(cartItem => {
             if (cartItem.menuItem.preparationTime && cartItem.menuItem.preparationTime > maxPrepTime) {
@@ -76,25 +278,38 @@ export default function CartScreen() {
             }
         });
 
+        // The earliest the order can be ready
         const minPickupTime = new Date(now.getTime() + maxPrepTime * 60000);
 
-        // Start from the next 15-minute mark
-        const startSlot = new Date(minPickupTime);
+        // Build today's shop opening time as a Date
+        const shopOpenDate = new Date(now);
+        shopOpenDate.setHours(Math.floor(openMin / 60), openMin % 60, 0, 0);
+
+        // If user is browsing before shop opens, start slots from shop opening time + prep
+        // If user is browsing during shop hours, start from now + prep
+        const effectiveStart = minPickupTime.getTime() < shopOpenDate.getTime()
+            ? new Date(shopOpenDate.getTime() + maxPrepTime * 60000)
+            : minPickupTime;
+
+        // Align to next 15-minute boundary
+        const startSlot = new Date(effectiveStart);
         startSlot.setSeconds(0, 0);
         const rem = startSlot.getMinutes() % 15;
         if (rem !== 0) {
             startSlot.setMinutes(startSlot.getMinutes() + (15 - rem));
         }
 
-        // Generate slots for the next 5 hours, but filter by shop hours
+        // Generate slots (up to 20 slots = 5 hours), within shop closing time
         for (let i = 0; i < 20; i++) {
             const slotTime = new Date(startSlot.getTime() + i * 15 * 60000);
             const slotMin = slotTime.getHours() * 60 + slotTime.getMinutes();
 
-            // Only add if within shop hours
+            // Must be within shop hours
             if (slotMin >= openMin && slotMin <= closeMin) {
                 slots.push(slotTime);
             }
+            // Stop completely if past closing time
+            if (slotMin > closeMin) break;
         }
 
         return slots;
@@ -181,13 +396,13 @@ export default function CartScreen() {
                         const localImg = getMenuItemImage(item.name);
 
                         return (
-                            <Animated.View key={item.itemId} entering={FadeInDown.delay(index * 100).duration(400)} style={styles.cartItem}>
+                            <Animated.View key={cartItem.cartItemId} entering={FadeInDown.delay(index * 100).duration(400)} style={styles.cartItem}>
                                 {/* Item Image */}
                                 <View style={styles.cartItemImageContainer}>
                                     {item.imageUrl ? (
-                                        <Image source={{ uri: item.imageUrl }} style={styles.cartItemImage} />
+                                        <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.cartItemImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                                     ) : localImg ? (
-                                        <Image source={localImg} style={styles.cartItemImage} />
+                                        <Image source={localImg} style={styles.cartItemImage} contentFit="cover" />
                                     ) : (
                                         <View style={[styles.cartItemImage, { backgroundColor: '#353030', alignItems: 'center', justifyContent: 'center' }]}>
                                             <Ionicons name="restaurant" size={20} color="#757575" />
@@ -197,6 +412,18 @@ export default function CartScreen() {
 
                                 <View style={{ flex: 1, marginLeft: 12 }}>
                                     <Text style={styles.cartItemName} numberOfLines={1}>{item.name}</Text>
+                                    
+                                    {/* Add-ons */}
+                                    {cartItem.selectedAddOns && cartItem.selectedAddOns.length > 0 && (
+                                        <View style={{ marginTop: 2, marginBottom: 2 }}>
+                                            {cartItem.selectedAddOns.map(addon => (
+                                                <Text key={addon.name} style={{ color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_500Medium' }}>
+                                                    + {addon.quantity}x {addon.name} (₹{addon.price * addon.quantity})
+                                                </Text>
+                                            ))}
+                                        </View>
+                                    )}
+
                                     {item.isCombo && item.comboItems && (
                                         <Text style={styles.cartItemCombo} numberOfLines={1}>
                                             {item.comboItems.join(' • ')}
@@ -211,21 +438,23 @@ export default function CartScreen() {
                                     ) : null}
                                     <View style={styles.cartItemPriceRow}>
                                         <Text style={styles.cartItemPriceEach}>{formatCurrency(item.price)}</Text>
-                                        <Text style={styles.cartItemTotalItem}>{formatCurrency(item.price * cartItem.quantity)}</Text>
+                                        <Text style={styles.cartItemTotalItem}>
+                                            {formatCurrency((item.price + (cartItem.selectedAddOns?.reduce((sum, a) => sum + (a.price * a.quantity), 0) || 0)) * cartItem.quantity)}
+                                        </Text>
                                     </View>
                                 </View>
 
                                 {/* Stepper */}
                                 <View style={styles.stepper}>
                                     <TouchableOpacity
-                                        onPress={() => decrementQuantity(item.itemId)}
+                                        onPress={() => decrementQuantity(cartItem.cartItemId)}
                                         style={styles.stepperBtn}
                                     >
                                         <Ionicons name="remove" size={14} color="#FF6A00" />
                                     </TouchableOpacity>
                                     <Text style={styles.stepperCount}>{cartItem.quantity}</Text>
                                     <TouchableOpacity
-                                        onPress={() => incrementQuantity(item.itemId)}
+                                        onPress={() => incrementQuantity(cartItem.cartItemId)}
                                         style={styles.stepperBtn}
                                     >
                                         <Ionicons name="add" size={14} color="#FF6A00" />
@@ -294,32 +523,45 @@ export default function CartScreen() {
                             <View style={styles.modalHandle} />
                             <Text style={styles.modalTitle}>{AppStrings.selectPickupTime}</Text>
                             <View style={styles.timeGrid}>
-                                {timeSlots.map((time) => {
-                                    const isSelected = selectedTime?.getTime() === time.getTime();
-                                    return (
-                                        <TouchableOpacity
-                                            key={time.getTime()}
-                                            onPress={() => {
-                                                setSelectedTime(time);
-                                                setTimePickerVisible(false);
-                                            }}
-                                            style={[styles.timeSlot, isSelected && styles.timeSlotActive]}
-                                        >
-                                            <Text style={[styles.timeSlotText, isSelected && { color: '#FFFFFF', fontFamily: 'Inter_700Bold' }]}>
-                                                {formatTime(time)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                {timeSlots.length === 0 ? (
+                                    <View style={{ width: '100%', alignItems: 'center', paddingVertical: 32 }}>
+                                        <Ionicons name="time-outline" size={40} color="#353030" />
+                                        <Text style={{ color: '#757575', fontSize: 15, fontFamily: 'Inter_600SemiBold', marginTop: 12, textAlign: 'center' }}>
+                                            No pickup slots available right now
+                                        </Text>
+                                        <Text style={{ color: '#555', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 6, textAlign: 'center', paddingHorizontal: 16 }}>
+                                            The shop opens at {status?.openTime || '06:00 PM'}. Pickup times will appear during operating hours.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    timeSlots.map((time) => {
+                                        const isSelected = selectedTime?.getTime() === time.getTime();
+                                        return (
+                                            <TouchableOpacity
+                                                key={time.getTime()}
+                                                onPress={() => {
+                                                    setSelectedTime(time);
+                                                    setTimePickerVisible(false);
+                                                }}
+                                                style={[styles.timeSlot, isSelected && styles.timeSlotActive]}
+                                            >
+                                                <Text style={[styles.timeSlotText, isSelected && { color: '#FFFFFF', fontFamily: 'Inter_700Bold' }]}>
+                                                    {formatTime(time)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })
+                                )}
                             </View>
                         </Pressable>
                     </Pressable>
                 </Modal>
 
-                {/* Static QR Payment Modal */}
+                {/* UPI Payment Modal */}
                 <PaymentQRModal
                     visible={isQRVisible}
                     amount={cartTotal}
+                    orderId={`BQ-${Date.now()}`}
                     isLoading={isPlacingOrder}
                     onClose={() => setQRVisible(false)}
                     onPaid={() => handlePlaceOrder(PaymentType.PAY_NOW)}
@@ -395,25 +637,13 @@ export default function CartScreen() {
                                 </View>
                             )}
 
-                            {/* Place Order Button */}
-                            <TouchableOpacity
-                                style={styles.placeOrderBtn}
-                                activeOpacity={0.85}
-                                onPress={() => {
+                            {/* Slide to Place Order */}
+                            <SlideToOrder
+                                onComplete={() => {
                                     setBillSummaryVisible(false);
                                     setTimeout(() => setPaymentSelectionVisible(true), 200);
                                 }}
-                            >
-                                <LinearGradient
-                                    colors={['#FF6A00', '#E53B0A']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.placeOrderGradient}
-                                >
-                                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-                                    <Text style={styles.placeOrderText}>Place Order</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
+                            />
                         </Pressable>
                     </Pressable>
                 </Modal>
@@ -685,24 +915,32 @@ const styles = StyleSheet.create({
     timeGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 8,
     },
     timeSlot: {
-        paddingHorizontal: 16,
+        width: '23%',
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 10,
         backgroundColor: '#1A1818',
         borderWidth: 1,
         borderColor: '#353030',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     timeSlotActive: {
         backgroundColor: '#FF6A00',
         borderColor: '#FF6A00',
+        elevation: 4,
+        shadowColor: '#FF6A00',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
     },
     timeSlotText: {
         color: '#A5A2A2',
         fontFamily: 'Urbanist_600SemiBold',
-        fontSize: 14,
+        fontSize: 13,
+        textAlign: 'center',
     },
     closedMessageContainer: {
         flexDirection: 'row',

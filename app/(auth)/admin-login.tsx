@@ -1,4 +1,5 @@
-import { View, Text, Image, Dimensions, StyleSheet, Pressable, TextInput } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, Pressable, TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,7 +56,8 @@ export default function AdminLoginScreen() {
                     <Image
                         source={require('../../assets/logo.png')}
                         style={styles.logo}
-                        resizeMode="contain"
+                        contentFit="contain"
+                        cachePolicy="memory-disk"
                     />
                     <Text style={styles.subtitle}>Roadside BBQ • Est. 2019</Text>
                 </Animated.View>

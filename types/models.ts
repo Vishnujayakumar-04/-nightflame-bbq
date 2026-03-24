@@ -1,3 +1,15 @@
+export interface AddOn {
+    name: string;
+    price: number;
+    maxQuantity?: number;
+}
+
+export interface SelectedAddOn {
+    name: string;
+    price: number;
+    quantity: number;
+}
+
 export interface MenuItem {
     itemId: string;
     name: string;
@@ -10,6 +22,7 @@ export interface MenuItem {
     preparationTime?: number;
     isCombo?: boolean;
     comboItems?: string[]; // Array of itemIds or descriptors if it's a combo
+    addOns?: AddOn[]; // Available extra pieces/customizations
 }
 
 export interface ShopStatus {
@@ -27,6 +40,7 @@ export interface CartItem {
     menuItem: MenuItem;
     quantity: number;
     specialInstructions?: string;
+    selectedAddOns?: SelectedAddOn[]; // Customer's selected add-ons with quantities
 }
 
 export interface Order {

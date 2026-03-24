@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Image, Dimensions, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useMemo } from 'react';
@@ -99,7 +100,10 @@ export default function PaymentQRScreen() {
 
     const renderOrderRow = ({ item, index }: { item: Order; index: number }) => {
         const badge = getPaymentBadge(item);
-        const itemsSummary = item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(', ');
+        const itemsSummary = item.items.map(i => {
+            const addonStr = i.selectedAddOns?.map(a => `${a.quantity}x ${a.name}`).join(', ');
+            return `${i.menuItem.name} ×${i.quantity}${addonStr ? ` (+ ${addonStr})` : ''}`;
+        }).join(' | ');
         const isPaid = item.paymentStatus === PaymentStatus.PAID;
 
         return (
@@ -175,9 +179,10 @@ export default function PaymentQRScreen() {
                     <View style={styles.qrCard}>
                         <View style={styles.qrImageWrapper}>
                             <Image
-                                source={require('../../assets/Payment/IMG_20260305_105900.png')}
+                                source={require('../../assets/Payment/Paytm_Qr.jpeg')}
                                 style={styles.qrImage}
-                                resizeMode="contain"
+                                contentFit="contain"
+                                cachePolicy="memory-disk"
                             />
                         </View>
                         <View style={styles.infoRow}>

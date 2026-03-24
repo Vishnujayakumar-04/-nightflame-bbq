@@ -44,7 +44,7 @@ export function PaymentSelectionModal({
                         <Button
                             title="Pay Now (UPI)"
                             onPress={onSelectPayNow}
-                            icon={<Ionicons name="qr-code-outline" size={18} color="#FFF" />}
+                            icon={<Ionicons name="phone-portrait-outline" size={18} color="#FFF" />}
                             disabled={!isShopOpen}
                             loading={isSubmitting}
                         />

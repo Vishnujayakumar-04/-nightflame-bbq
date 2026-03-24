@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Order } from '../../types/models';
@@ -22,15 +22,21 @@ const formatOrderIdShort = (id: string) => `#${id.substring(0, 8).toUpperCase()}
 
 export default function MyOrdersScreen() {
     const router = useRouter();
-    const { orders, isLoading } = useOrderStore();
+    const { orders, isLoading, subscribeToOrders } = useOrderStore();
     const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
 
+    // Ensure own subscription — don't rely solely on _layout.tsx
+    useEffect(() => {
+        const unsub = subscribeToOrders();
+        return unsub;
+    }, []);
+
     const activeOrders = useMemo(() => {
-        return orders.filter(o => o.status !== OrderStatus.COMPLETED);
+        return orders.filter(o => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED);
     }, [orders]);
 
     const pastOrders = useMemo(() => {
-        return orders.filter(o => o.status === OrderStatus.COMPLETED);
+        return orders.filter(o => o.status === OrderStatus.COMPLETED || o.status === OrderStatus.CANCELLED);
     }, [orders]);
 
     const displayOrders = activeTab === 'active' ? activeOrders : pastOrders;
@@ -68,7 +74,7 @@ export default function MyOrdersScreen() {
                     activeOpacity={0.85}
                 >
                     <View style={styles.orderHeader}>
-                        <Text style={styles.orderId}>{formatOrderIdShort(item.orderId)}</Text>
+                        <Text style={styles.orderId}>{item.orderNumber || formatOrderIdShort(item.orderId)}</Text>
                         <StatusBadge status={item.status} />
                     </View>
 

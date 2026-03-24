@@ -12,8 +12,14 @@ import { Order } from '../../../types/models';
 export default function OrderConfirmationScreen() {
     const router = useRouter();
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
-    const { orders } = useOrderStore();
+    const { orders, subscribeToOrders } = useOrderStore();
     const [order, setOrder] = useState<Order | null>(null);
+
+    // Ensure orders are loaded
+    useEffect(() => {
+        const unsub = subscribeToOrders();
+        return unsub;
+    }, []);
 
     useEffect(() => {
         if (orderId) {

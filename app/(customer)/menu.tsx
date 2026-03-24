@@ -1,4 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput, Image, StyleSheet, ActivityIndicator, Dimensions, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Dimensions, Modal, Pressable, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState, useMemo } from 'react';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -12,7 +13,7 @@ const CARD_WIDTH = (width - 48) / 2; // 2 cols with padding and gap
 import { useCartStore } from '../../store/cartStore';
 import { useMenuStore } from '../../store/menuStore';
 import { useShopStore } from '../../store/shopStore';
-import { MenuItem } from '../../types/models';
+import { MenuItem, AddOn, SelectedAddOn } from '../../types/models';
 import { getMenuItemImage } from '../../constants/menuImages';
 
 const formatCurrency = (amount: number) => `₹${amount}`;
@@ -31,7 +32,9 @@ const getNutritionInfo = (item: MenuItem) => {
 
 export default function MenuScreen() {
     const { menuItems, isLoading, subscribeToMenu } = useMenuStore();
-    const { addItem, getCartTotal, getItemCount } = useCartStore();
+    const addItem = useCartStore(state => state.addItem);
+    const getCartTotal = useCartStore(state => state.getCartTotal);
+    const getItemCount = useCartStore(state => state.getItemCount);
     const { status: shopStatus, subscribeToStatus } = useShopStore();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -39,8 +42,36 @@ export default function MenuScreen() {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     const [spiceLevel, setSpiceLevel] = useState('Normal');
-    const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+    const [selectedAddOns, setSelectedAddOns] = useState<SelectedAddOn[]>([]);
     const [modalQuantity, setModalQuantity] = useState(1);
+
+    // Reset modal when closing or opening
+    useEffect(() => {
+        if (!selectedItem) {
+            setSpiceLevel('Normal');
+            setSelectedAddOns([]);
+            setModalQuantity(1);
+        }
+    }, [selectedItem]);
+
+    const handleAddOnQuantityChange = (addon: AddOn, delta: number) => {
+        setSelectedAddOns(prev => {
+            const existing = prev.find(a => a.name === addon.name);
+            const currentQty = existing ? existing.quantity : 0;
+            const newQty = Math.max(0, currentQty + delta); 
+
+            if (addon.maxQuantity && newQty > addon.maxQuantity) return prev;
+            if (newQty === 0) return prev.filter(a => a.name !== addon.name);
+            if (existing) return prev.map(a => a.name === addon.name ? { ...a, quantity: newQty } : a);
+            
+            return [...prev, { name: addon.name, price: addon.price, quantity: newQty }];
+        });
+    };
+
+    const getAddOnQuantity = (addonName: string) => {
+        const item = selectedAddOns.find(a => a.name === addonName);
+        return item ? item.quantity : 0;
+    };
 
     useEffect(() => {
         const unsubMenu = subscribeToMenu();
@@ -89,9 +120,9 @@ export default function MenuScreen() {
                 {(() => {
                     const localImg = getMenuItemImage(item.name);
                     if (item.imageUrl) {
-                        return <Image source={{ uri: item.imageUrl }} style={styles.menuImageTop} resizeMode="cover" />;
+                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.menuImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
                     } else if (localImg) {
-                        return <Image source={localImg} style={styles.menuImageTop} resizeMode="cover" />;
+                        return <Image source={localImg} style={styles.menuImageTop} contentFit="cover" />;
                     } else {
                         return (
                             <View style={[styles.menuImageTop, styles.placeholderImage]}>
@@ -269,9 +300,9 @@ export default function MenuScreen() {
                                             {(() => {
                                                 const localImg = getMenuItemImage(selectedItem.name);
                                                 if (selectedItem.imageUrl) {
-                                                    return <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImagePremium} resizeMode="cover" />;
+                                                    return <Image source={{ uri: selectedItem.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.detailImagePremium} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
                                                 } else if (localImg) {
-                                                    return <Image source={localImg} style={styles.detailImagePremium} resizeMode="cover" />;
+                                                    return <Image source={localImg} style={styles.detailImagePremium} contentFit="cover" />;
                                                 } else {
                                                     return (
                                                         <View style={[styles.detailImagePremium, styles.detailPlaceholderImage]}>
@@ -341,30 +372,40 @@ export default function MenuScreen() {
                                                 </View>
                                             </View>
 
-                                            {/* Add-ons */}
-                                            <View style={styles.customizationSection}>
-                                                <Text style={styles.customizationLabel}>ADD-ONS</Text>
-                                                <View style={styles.choicesRow}>
-                                                    <TouchableOpacity
-                                                        onPress={() => {
-                                                            if (selectedAddons.includes('Extra Mayo')) {
-                                                                setSelectedAddons(selectedAddons.filter(a => a !== 'Extra Mayo'));
-                                                            } else {
-                                                                setSelectedAddons([...selectedAddons, 'Extra Mayo']);
-                                                            }
-                                                        }}
-                                                        style={[
-                                                            styles.choiceChip,
-                                                            selectedAddons.includes('Extra Mayo') && styles.choiceChipActive
-                                                        ]}
-                                                    >
-                                                        <Text style={[
-                                                            styles.choiceText,
-                                                            selectedAddons.includes('Extra Mayo') && styles.choiceTextActive
-                                                        ]}>Extra Mayonnaise (+₹10)</Text>
-                                                    </TouchableOpacity>
+                                            {/* Dynamic Add-ons */}
+                                            {selectedItem.addOns && selectedItem.addOns.length > 0 && (
+                                                <View style={[styles.customizationSection, { marginTop: 20 }]}>
+                                                    <Text style={styles.customizationLabel}>EXTRA PIECES / ADD-ONS</Text>
+                                                    {selectedItem.addOns.map((addon) => {
+                                                        const qty = getAddOnQuantity(addon.name);
+                                                        return (
+                                                            <View key={addon.name} style={[styles.choicesRow, { justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1A1818', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#353030', marginBottom: 10 }]}>
+                                                                <View style={{ flex: 1 }}>
+                                                                    <Text style={{ color: '#FFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' }}>{addon.name}</Text>
+                                                                    <Text style={{ color: '#FF6A00', fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 2 }}>+₹{addon.price} per piece</Text>
+                                                                </View>
+                                                                
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#252121', borderRadius: 8 }}>
+                                                                    <TouchableOpacity 
+                                                                        onPress={() => handleAddOnQuantityChange(addon, -1)}
+                                                                        style={{ padding: 10, opacity: qty === 0 ? 0.3 : 1 }}
+                                                                        disabled={qty === 0}
+                                                                    >
+                                                                        <Ionicons name="remove" size={18} color="#FFF" />
+                                                                    </TouchableOpacity>
+                                                                    <Text style={{ color: '#FFF', fontSize: 16, fontFamily: 'Poppins_700Bold', width: 24, textAlign: 'center' }}>{qty}</Text>
+                                                                    <TouchableOpacity 
+                                                                        onPress={() => handleAddOnQuantityChange(addon, 1)}
+                                                                        style={{ padding: 10 }}
+                                                                    >
+                                                                        <Ionicons name="add" size={18} color="#FF6A00" />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            </View>
+                                                        );
+                                                    })}
                                                 </View>
-                                            </View>
+                                            )}
                                         </View>
                                     </ScrollView>
 
@@ -390,18 +431,22 @@ export default function MenuScreen() {
                                             style={[styles.premiumAddBtn, !shopStatus?.isOpen && { opacity: 0.7 }]}
                                             onPress={() => {
                                                 if (!shopStatus?.isOpen) return;
-                                                const totalExtra = selectedAddons.includes('Extra Mayo') ? 10 : 0;
-                                                const instructions = [`Spice: ${spiceLevel}`, ...selectedAddons].join(', ');
-
-                                                for (let i = 0; i < modalQuantity; i++) {
-                                                    addItem({
-                                                        ...selectedItem,
-                                                        price: selectedItem.price + totalExtra
-                                                    }, instructions);
+                                                
+                                                // Calculate dynamic addon cost
+                                                const addOnTotal = selectedAddOns.reduce((sum, a) => sum + (a.price * a.quantity), 0);
+                                                
+                                                // Build instructions to include Spice Level and formatted addons
+                                                const instructionsArr = [`Spice: ${spiceLevel}`];
+                                                if (selectedAddOns.length > 0) {
+                                                    instructionsArr.push(selectedAddOns.map(a => `${a.quantity}x ${a.name}`).join(', '));
                                                 }
-                                                setSpiceLevel('Normal');
-                                                setSelectedAddons([]);
-                                                setModalQuantity(1);
+                                                const finalInstructions = instructionsArr.join(' | ');
+
+                                                // Pass selectedAddOns to cart store
+                                                for (let i = 0; i < modalQuantity; i++) {
+                                                    addItem(selectedItem, finalInstructions, selectedAddOns.length > 0 ? selectedAddOns : undefined);
+                                                }
+                                                
                                                 setSelectedItem(null);
                                             }}
                                             disabled={!shopStatus?.isOpen}
@@ -414,7 +459,7 @@ export default function MenuScreen() {
                                             >
                                                 <Text style={styles.premiumAddText}>
                                                     {shopStatus?.isOpen
-                                                        ? `Add Item  |  ${formatCurrency((selectedItem.price + (selectedAddons.includes('Extra Mayo') ? 10 : 0)) * modalQuantity)}`
+                                                        ? `Add Item  |  ${formatCurrency((selectedItem.price + selectedAddOns.reduce((sum, a) => sum + a.price * a.quantity, 0)) * modalQuantity)}`
                                                         : 'STORE CLOSED'}
                                                 </Text>
                                             </LinearGradient>

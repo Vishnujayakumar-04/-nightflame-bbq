@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,7 +61,7 @@ export default function UploadProfileScreen() {
                     <View style={styles.photoContainer}>
                         <Pressable onPress={() => pickImage(false)} style={styles.photoCircle}>
                             {image ? (
-                                <Image source={{ uri: image }} style={styles.profileImage} />
+                                <Image source={{ uri: image }} style={styles.profileImage} contentFit="cover" cachePolicy="memory-disk" />
                             ) : (
                                 <View style={styles.placeholderIcon}>
                                     <Ionicons name="camera-outline" size={40} color="#757575" />

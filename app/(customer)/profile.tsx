@@ -1,13 +1,16 @@
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Image, Modal, Pressable, Linking, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Modal, Pressable, Linking, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
+import { useOrderStore } from '../../store/orderStore';
+import { OrderStatus } from '../../constants/enums';
 
 
 
@@ -18,16 +21,30 @@ function ProfileScreen() {
     const router = useRouter();
     const clearCart = useCartStore(state => state.clearCart);
     const { user, signOut, updateProfile } = useAuthStore();
+    const { orders, subscribeToOrders } = useOrderStore();
     const [isSaving, setIsSaving] = useState(false);
     const [showPhotoOptions, setShowPhotoOptions] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+
+    // Ensure orders are loaded
+    useEffect(() => {
+        const unsub = subscribeToOrders();
+        return unsub;
+    }, []);
 
     const userName = user?.name || 'Customer';
     const userPhone = user?.phoneNumber || '+91 9876543210';
     const profilePhoto = user?.profilePhotoUri;
 
-    // Order stats
-    const stats = { total: 0, active: 0, completed: 0 };
+    // Order stats — computed from real data
+    const stats = useMemo(() => {
+        const total = orders.length;
+        const active = orders.filter(o =>
+            o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED
+        ).length;
+        const completed = orders.filter(o => o.status === OrderStatus.COMPLETED).length;
+        return { total, active, completed };
+    }, [orders]);
 
     const handlePickImage = async (useCamera: boolean) => {
         setShowPhotoOptions(false);
@@ -140,7 +157,7 @@ function ProfileScreen() {
                             >
                                 <View style={styles.avatarGlow}>
                                     {profilePhoto ? (
-                                        <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+                                        <Image source={{ uri: profilePhoto }} style={styles.avatarImage} contentFit="cover" cachePolicy="memory-disk" />
                                     ) : (
                                         <View style={styles.avatarPlaceholder}>
                                             <Ionicons name="person" size={44} color="#FF6A00" />
@@ -228,7 +245,7 @@ function ProfileScreen() {
                             <View style={styles.drawerHeader}>
                                 <View style={styles.drawerAvatarRing}>
                                     {profilePhoto ? (
-                                        <Image source={{ uri: profilePhoto }} style={styles.drawerAvatar} />
+                                        <Image source={{ uri: profilePhoto }} style={styles.drawerAvatar} contentFit="cover" cachePolicy="memory-disk" />
                                     ) : (
                                         <View style={styles.drawerAvatarPlaceholder}>
                                             <Ionicons name="person" size={30} color="#FF6A00" />

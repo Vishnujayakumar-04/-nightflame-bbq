@@ -77,16 +77,16 @@ export default function WalkInOrderScreen() {
         setIsPlacing(true);
         try {
             await placeOrder({
-                userId: 'walk-in', // Explicit identifier for reporting
+                userId: 'walk-in',
                 customerName: customerName.trim() || 'Walk-in Customer',
                 items: selectedItems,
                 totalAmount,
                 pickupTime: Date.now() + 15 * 60000,
-                // estimatedPickupTime is calculated automatically in store
                 paymentType: PaymentType.PAY_NOW,
-                paymentStatus: PaymentStatus.UNPAID, // Changed to unpaid by default
+                paymentStatus: PaymentStatus.UNPAID,
                 paymentMethod: null,
-                paidAt: undefined,
+                paidAt: null,
+                transactionId: null,
                 notificationShown: true,
                 isLocked: false,
                 lockedBy: null
@@ -94,8 +94,9 @@ export default function WalkInOrderScreen() {
             Alert.alert('Success', 'Walk-in order created! Collect payment from the dashboard.', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
-        } catch {
-            Alert.alert('Error', 'Failed to place order');
+        } catch (e: any) {
+            console.error('[Walk-in] Order failed:', e);
+            Alert.alert('Error', e?.message || 'Failed to place order. Please try again.');
         } finally {
             setIsPlacing(false);
         }

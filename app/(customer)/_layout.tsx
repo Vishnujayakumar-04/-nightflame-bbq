@@ -11,7 +11,7 @@ export default function CustomerTabsLayout() {
     const insets = useSafeAreaInsets();
     const { user } = useAuthStore();
     const { orders, subscribeToOrders } = useOrderStore();
-    const [notification, setNotification] = useState<{ message: string; icon: string; color: string } | null>(null);
+    const [notification, setNotification] = useState<{ message: string; icon: string; color: string; title: string } | null>(null);
     const slideAnim = useRef(new RNAnimated.Value(-150)).current;
     const prevStatusesRef = useRef<Record<string, string>>({});
 
@@ -30,24 +30,56 @@ export default function CustomerTabsLayout() {
         let alertMessage = '';
         let alertIcon = 'notifications-outline';
         let alertColor = '#FF6A00';
+        let alertTitle = 'Order Update';
 
         for (const order of orders) {
             const prev = prevStatuses[order.orderId];
             const curr = order.status;
 
-            // Only trigger if we have a previous value (skip initial load)
+            // New order just placed (wasn't in previous snapshot)
+            if (!prev && curr === OrderStatus.PENDING) {
+                alertMessage = '🔥 Order placed successfully! Waiting for confirmation.';
+                alertIcon = 'flame-outline';
+                alertColor = '#FF6A00';
+                alertTitle = 'Order Placed';
+                break;
+            }
+
+            // Status changed from what we were tracking
             if (prev && prev !== curr) {
-                if (curr === OrderStatus.PREPARING) {
-                    alertMessage = '🍳 Your order is being prepared!';
-                    alertIcon = 'restaurant-outline';
-                    alertColor = '#FF6A00';
-                    break;
-                } else if (curr === OrderStatus.READY) {
-                    alertMessage = '✅ Your order is ready for pickup!';
-                    alertIcon = 'checkmark-circle-outline';
-                    alertColor = '#4CAF50';
-                    break;
+                switch (curr) {
+                    case OrderStatus.ACCEPTED:
+                        alertMessage = '✅ Your order has been accepted!';
+                        alertIcon = 'checkmark-circle-outline';
+                        alertColor = '#2196F3';
+                        alertTitle = 'Order Accepted';
+                        break;
+                    case OrderStatus.PREPARING:
+                        alertMessage = '🍳 Your order is being prepared!';
+                        alertIcon = 'restaurant-outline';
+                        alertColor = '#FF6A00';
+                        alertTitle = 'Preparing';
+                        break;
+                    case OrderStatus.READY:
+                        alertMessage = '🎉 Your order is ready for pickup!';
+                        alertIcon = 'bag-check-outline';
+                        alertColor = '#4CAF50';
+                        alertTitle = 'Ready for Pickup';
+                        break;
+                    case OrderStatus.COMPLETED:
+                        alertMessage = '🏆 Order completed. Thank you!';
+                        alertIcon = 'trophy-outline';
+                        alertColor = '#4CAF50';
+                        alertTitle = 'Completed';
+                        break;
+                    case OrderStatus.CANCELLED:
+                        alertMessage = '❌ Your order has been cancelled.';
+                        alertIcon = 'close-circle-outline';
+                        alertColor = '#EF5350';
+                        alertTitle = 'Order Cancelled';
+                        break;
                 }
+                if (alertMessage) break;
             }
         }
 
@@ -59,7 +91,7 @@ export default function CustomerTabsLayout() {
         prevStatusesRef.current = newStatuses;
 
         if (alertMessage) {
-            setNotification({ message: alertMessage, icon: alertIcon, color: alertColor });
+            setNotification({ message: alertMessage, icon: alertIcon, color: alertColor, title: alertTitle });
             RNAnimated.timing(slideAnim, {
                 toValue: insets.top + 10,
                 duration: 400,
@@ -73,7 +105,7 @@ export default function CustomerTabsLayout() {
                     duration: 400,
                     useNativeDriver: true,
                 }).start(() => setNotification(null));
-            }, 4000);
+            }, 5000);
         }
     }, [orders]);
 
@@ -175,7 +207,7 @@ export default function CustomerTabsLayout() {
                     <Ionicons name={(notification?.icon as any) || 'notifications-outline'} size={24} color={notification?.color || '#FF6A00'} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.notificationTitle}>Order Update</Text>
+                    <Text style={styles.notificationTitle}>{notification?.title || 'Order Update'}</Text>
                     <Text style={styles.notificationText}>{notification?.message}</Text>
                 </View>
             </RNAnimated.View>

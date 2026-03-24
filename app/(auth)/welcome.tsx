@@ -1,4 +1,5 @@
-import { View, Text, Image, Dimensions, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +12,7 @@ const MARQUEE_IMAGES_ROW1 = [
     require('../../assets/Menu/single/chicken_lollipop.png'),
     require('../../assets/Menu/single/grilled_drumstick.png'),
     require('../../assets/Menu/combo/mega_grill_combo.png'),
-    require('../../assets/Menu/single/grilled_leg.png'),
+    require('../../assets/Menu/single/chicken_tikka.png'),
 ];
 
 const MARQUEE_IMAGES_ROW2 = [
@@ -46,7 +47,7 @@ const ImageMarqueeRow = ({ images, duration, reverse = false }: { images: any[],
             <Animated.View style={[styles.marqueeRow, animatedStyle]}>
                 {[...images, ...images, ...images].map((img, idx) => (
                     <View key={idx} style={styles.marqueeItem}>
-                        <Image source={img} style={styles.marqueeImage} resizeMode="cover" />
+                        <Image source={img} style={styles.marqueeImage} contentFit="cover" cachePolicy="memory-disk" />
                     </View>
                 ))}
             </Animated.View>
@@ -78,7 +79,8 @@ export default function WelcomeScreen() {
                         <Image
                             source={require('../../assets/logo.png')}
                             style={styles.logo}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
                         />
                         <View style={styles.taglineWrapper}>
                             <View style={styles.line} />
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         width: '100%',
-        borderRadius: 30,
+        borderRadius: 100,
         overflow: 'hidden',
         elevation: 8,
         shadowColor: '#FF6A00',
@@ -213,6 +215,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
+        borderRadius: 100,
     },
     buttonText: {
         color: '#FFFFFF',

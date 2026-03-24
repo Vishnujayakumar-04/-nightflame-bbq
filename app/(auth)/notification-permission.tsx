@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,7 +43,8 @@ export default function NotificationPermissionScreen() {
                         <Image
                             source={require('../../assets/images/onboarding/delivery_character.png')}
                             style={styles.illustration}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
                         />
                     </Animated.View>
 

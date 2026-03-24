@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { MenuItem } from '../types/models';
 import { AppColors } from '../constants/Colors';
@@ -22,7 +23,8 @@ export const FoodCard = ({ item, quantity, onAdd, onIncrement, onDecrement }: Fo
                 <Image
                     source={{ uri: item.imageUrl }}
                     className="w-full h-full"
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                 />
                 {!item.available && (
                     <View className="absolute inset-0 bg-black/60 items-center justify-center">

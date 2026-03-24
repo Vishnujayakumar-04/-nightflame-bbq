@@ -4,9 +4,9 @@
 const imageMap: Record<string, any> = {
     // Single Items (BBQ / Wings)
     'chicken lollipop': require('../assets/Menu/single/chicken_lollipop.png'),
+    'chicken tikka': require('../assets/Menu/single/chicken_tikka.png'),
     'chicken wings': require('../assets/Menu/single/chicken_wings.png'),
     'grilled drumstick': require('../assets/Menu/single/grilled_drumstick.png'),
-    'grilled leg': require('../assets/Menu/single/grilled_leg.png'),
     'grilled thigh': require('../assets/Menu/single/grilled_thigh.png'),
 
     // Combo Items

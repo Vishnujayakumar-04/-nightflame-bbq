@@ -34,27 +34,36 @@ export const useOrderStore = create<OrderState>((set) => ({
             return () => { };
         }
 
-        let q = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
-
-        // If not admin, only fetch their own orders
-        if (user.role !== UserRole.ADMIN) {
-            q = query(q, where('userId', '==', user.userId));
+        // For admin: fetch all orders
+        // For customers: fetch only their orders
+        // IMPORTANT: Avoid compound queries (where + orderBy on different fields)
+        // as they require Firestore composite indexes. We sort client-side instead.
+        let q;
+        if (user.role === UserRole.ADMIN) {
+            q = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
+        } else {
+            // Simple query — no composite index needed
+            q = query(collection(db, 'orders'), where('userId', '==', user.userId));
         }
 
         const unsubscribe = onSnapshot(
             q,
             (snapshot) => {
-                const fetchedOrders: Order[] = snapshot.docs.map(doc => {
-                    const order = {
-                        ...(doc.data() as Omit<Order, 'orderId'>),
-                        orderId: doc.id
+                const fetchedOrders: Order[] = snapshot.docs.map(docSnap => {
+                    return {
+                        ...(docSnap.data() as Omit<Order, 'orderId'>),
+                        orderId: docSnap.id
                     } as Order;
-                    return order;
                 });
 
+                // Client-side sort by timestamp descending (newest first)
+                fetchedOrders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                console.log(`[OrderStore] Loaded ${fetchedOrders.length} orders for ${user.role}`);
                 set({ orders: fetchedOrders, isLoading: false, error: null });
             },
             (error) => {
+                console.error('[OrderStore] Subscription error:', error.message);
                 set({ error: error.message, isLoading: false });
             }
         );
@@ -115,7 +124,12 @@ export const useOrderStore = create<OrderState>((set) => ({
                     lockedBy: null
                 };
 
-                transaction.set(orderRef, newOrder);
+                // Firestore rejects `undefined` values — strip them to prevent write failures
+                const cleanOrder = Object.fromEntries(
+                    Object.entries(newOrder).filter(([_, v]) => v !== undefined)
+                );
+
+                transaction.set(orderRef, cleanOrder);
                 return { orderId: orderRef.id, orderNumber };
             });
 
@@ -128,11 +142,32 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     updateOrderStatus: async (orderId, status) => {
         try {
+            const state = useOrderStore.getState();
+            const order = state.orders.find(o => o.orderId === orderId);
+            
+            if (!order) throw new Error("Order not found.");
+
+            const isWalkIn = order.userId === 'walk-in';
+
+            // Strict Transitions Enforcement
+            const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+                [OrderStatus.PENDING]: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],
+                [OrderStatus.ACCEPTED]: isWalkIn
+                    ? [OrderStatus.COMPLETED, OrderStatus.CANCELLED]  // Walk-in shortcut
+                    : [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+                [OrderStatus.PREPARING]: [OrderStatus.READY],
+                [OrderStatus.READY]: [OrderStatus.COMPLETED],
+                [OrderStatus.COMPLETED]: [],
+                [OrderStatus.CANCELLED]: []
+            };
+
+            if (!validTransitions[order.status].includes(status)) {
+                throw new Error(`Invalid status transition from ${order.status} to ${status}`);
+            }
+
             // Guard: Cannot mark completed unless paid.
             if (status === OrderStatus.COMPLETED) {
-                const state = useOrderStore.getState();
-                const order = state.orders.find(o => o.orderId === orderId);
-                if (order && order.paymentStatus !== PaymentStatus.PAID) {
+                if (order.paymentStatus !== PaymentStatus.PAID) {
                     throw new Error("Order must be paid before marking completed.");
                 }
             }
@@ -161,7 +196,7 @@ export const useOrderStore = create<OrderState>((set) => ({
                 isLocked: false,
                 lockedBy: null
             };
-            if (transactionId) {
+            if (transactionId && transactionId.trim() !== '') {
                 updates.transactionId = transactionId;
             }
             await updateDoc(doc(db, 'orders', orderId), updates);

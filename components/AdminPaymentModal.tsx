@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './ui/Button';
 import { PaymentMethod } from '../constants/enums';
@@ -16,15 +17,12 @@ interface AdminPaymentModalProps {
 
 export function AdminPaymentModal({ visible, orderId, amount, customerName, isLoading, onClose, onConfirm }: AdminPaymentModalProps) {
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod.CASH | PaymentMethod.UPI>(PaymentMethod.UPI);
-    const [transactionId, setTransactionId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleConfirm = async () => {
         setIsSubmitting(true);
         try {
-            await onConfirm(selectedMethod, selectedMethod === PaymentMethod.UPI ? transactionId : undefined);
-            // Reset state after success
-            setTransactionId('');
+            await onConfirm(selectedMethod);
             setSelectedMethod(PaymentMethod.UPI);
         } catch {
             // payment confirmation failed — handled by parent
@@ -80,29 +78,16 @@ export function AdminPaymentModal({ visible, orderId, amount, customerName, isLo
 
                     {/* UPI Details & QR */}
                     {selectedMethod === PaymentMethod.UPI && (
-                        <View>
-                            {/* QR Display for Admin to show customer */}
-                            <View style={styles.qrContainer}>
-                                <View style={styles.qrWrapper}>
-                                    <Image
-                                        source={require('../assets/Payment/IMG_20260305_105900.png')}
-                                        style={styles.qrImage}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                                <Text style={styles.qrHint}>Customer scans this to pay</Text>
-                            </View>
-
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Transaction ID (Optional but Recommended)</Text>
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder="e.g. 123456789012"
-                                    placeholderTextColor="#555"
-                                    value={transactionId}
-                                    onChangeText={setTransactionId}
+                        <View style={styles.qrContainer}>
+                            <View style={styles.qrWrapper}>
+                                <Image
+                                    source={require('../assets/Payment/Paytm_Qr.jpeg')}
+                                    style={styles.qrImage}
+                                    contentFit="contain"
+                                    cachePolicy="memory-disk"
                                 />
                             </View>
+                            <Text style={styles.qrHint}>Show this QR to customer to pay</Text>
                         </View>
                     )}
 

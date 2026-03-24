@@ -1,4 +1,5 @@
-import { View, Text, Image, Dimensions, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +57,8 @@ export default function RoleSelectionScreen() {
                     <Image
                         source={require('../../assets/logo.png')}
                         style={styles.centerLogo}
-                        resizeMode="contain"
+                        contentFit="contain"
+                        cachePolicy="memory-disk"
                     />
                 </Animated.View>
 

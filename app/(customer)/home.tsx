@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withTiming, Easing, withDelay, runOnJS } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -11,7 +12,8 @@ import { useMenuStore } from '../../store/menuStore';
 import { useAuthStore } from '../../store/authStore';
 import { useShopStore } from '../../store/shopStore';
 import { getMenuItemImage } from '../../constants/menuImages';
-import { MenuItem } from '../../types/models';
+import { MenuItem, SelectedAddOn } from '../../types/models';
+import { ItemCustomizationModal } from '../../components/ItemCustomizationModal';
 
 
 
@@ -37,9 +39,9 @@ const PopularItemCard = ({ item, status, router }: { item: MenuItem; status: any
                 {(() => {
                     const localImg = getMenuItemImage(item.name);
                     if (item.imageUrl) {
-                        return <Image source={{ uri: item.imageUrl }} style={styles.popularImageTop} resizeMode="cover" />;
+                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.popularImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                     } else if (localImg) {
-                        return <Image source={localImg} style={styles.popularImageTop} resizeMode="cover" />;
+                        return <Image source={localImg} style={styles.popularImageTop} contentFit="cover" />;
                     } else {
                         return (
                             <View style={[styles.popularImageTop, { backgroundColor: '#EAEAEA', alignItems: 'center', justifyContent: 'center' }]}>
@@ -137,10 +139,11 @@ const PopularMarquee = ({ items, status, router }: { items: MenuItem[]; status: 
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { addItem } = useCartStore();
+    const addItem = useCartStore(state => state.addItem);
     const { menuItems, subscribeToMenu } = useMenuStore();
     const { user } = useAuthStore();
     const { status, subscribeToStatus } = useShopStore();
+    const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
 
     useEffect(() => {
         const unsubMenu = subscribeToMenu();
@@ -181,7 +184,7 @@ export default function HomeScreen() {
                             <Image
                                 source={require('../../assets/logo.png')}
                                 style={styles.shopBtnImage}
-                                resizeMode="cover"
+                                contentFit="cover"
                             />
                         </TouchableOpacity>
                     </View>
@@ -236,9 +239,9 @@ export default function HomeScreen() {
                                 {(() => {
                                     const localImg = getMenuItemImage(specialItem.name);
                                     if (specialItem.imageUrl) {
-                                        return <Image source={{ uri: specialItem.imageUrl }} style={styles.specialImage} resizeMode="cover" />;
+                                        return <Image source={{ uri: specialItem.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.specialImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                                     } else if (localImg) {
-                                        return <Image source={localImg} style={styles.specialImage} resizeMode="cover" />;
+                                        return <Image source={localImg} style={styles.specialImage} contentFit="cover" />;
                                     } else {
                                         return <View style={[styles.specialImage, { backgroundColor: '#2A2A2A' }]} />;
                                     }
@@ -252,8 +255,12 @@ export default function HomeScreen() {
                                         style={[styles.orderNowBtn, !status?.isOpen && styles.orderNowBtnDisabled]}
                                         onPress={() => {
                                             if (!status?.isOpen) return;
-                                            addItem(specialItem);
-                                            router.push('/(customer)/cart');
+                                            if (specialItem.addOns && specialItem.addOns.length > 0) {
+                                                setCustomizeItem(specialItem);
+                                            } else {
+                                                addItem(specialItem);
+                                                router.push('/(customer)/cart');
+                                            }
                                         }}
                                         disabled={!status?.isOpen}
                                     >

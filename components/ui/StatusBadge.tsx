@@ -1,5 +1,4 @@
 import { View, Text } from 'react-native';
-
 import { OrderStatus } from '../../constants/enums';
 
 interface StatusBadgeProps {
@@ -12,12 +11,16 @@ export const StatusBadge = ({ status, large = false }: StatusBadgeProps) => {
         switch (status) {
             case OrderStatus.PENDING:
                 return { color: '#F59E0B', label: 'Pending', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)' };
+            case OrderStatus.ACCEPTED:
+                return { color: '#2196F3', label: 'Accepted', bg: 'rgba(33, 150, 243, 0.15)', border: 'rgba(33, 150, 243, 0.4)' };
             case OrderStatus.PREPARING:
                 return { color: '#3B82F6', label: 'Preparing', bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)' };
             case OrderStatus.READY:
                 return { color: '#10B981', label: 'Ready for Pickup', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)' };
             case OrderStatus.COMPLETED:
                 return { color: '#6B7280', label: 'Completed', bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)' };
+            case OrderStatus.CANCELLED:
+                return { color: '#EF5350', label: 'Cancelled', bg: 'rgba(239, 83, 80, 0.15)', border: 'rgba(239, 83, 80, 0.4)' };
             default:
                 return { color: '#6B7280', label: 'Unknown', bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)' };
         }

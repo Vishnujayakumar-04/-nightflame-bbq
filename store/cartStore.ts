@@ -1,62 +1,81 @@
 import { create } from 'zustand';
-import { CartItem, MenuItem } from '../types/models';
+import { CartItem, MenuItem, SelectedAddOn } from '../types/models';
 
 interface CartState {
-    items: CartItem[];
-    addItem: (item: MenuItem, specialInstructions?: string) => void;
-    removeItem: (itemId: string) => void;
-    incrementQuantity: (itemId: string) => void;
-    decrementQuantity: (itemId: string) => void;
+    items: (CartItem & { cartItemId: string })[];
+    addItem: (menuItem: MenuItem, specialInstructions?: string, selectedAddOns?: SelectedAddOn[]) => void;
+    removeItem: (cartItemId: string) => void;
+    incrementQuantity: (cartItemId: string) => void;
+    decrementQuantity: (cartItemId: string) => void;
     clearCart: () => void;
     getCartTotal: () => number;
     getItemCount: () => number;
     getItemQuantity: (itemId: string) => number;
 }
 
+// Generate a unique ID based on the item and its identical addons
+const generateCartItemId = (itemId: string, addOns?: SelectedAddOn[]) => {
+    if (!addOns || addOns.length === 0) return itemId;
+    // Sort add-ons by name so the hash is consistent
+    const sorted = [...addOns].sort((a, b) => a.name.localeCompare(b.name));
+    const addOnStr = sorted.map(a => `${a.name}(${a.quantity})`).join('-');
+    return `${itemId}-${addOnStr}`;
+};
+
 export const useCartStore = create<CartState>((set, get) => ({
     items: [],
 
-    addItem: (menuItem: MenuItem, specialInstructions?: string) => {
+    addItem: (menuItem: MenuItem, specialInstructions?: string, selectedAddOns?: SelectedAddOn[]) => {
         set((state) => {
-            const existingItem = state.items.find((i) => i.menuItem.itemId === menuItem.itemId);
+            const cartItemId = generateCartItemId(menuItem.itemId, selectedAddOns);
+            const existingItem = state.items.find((i) => i.cartItemId === cartItemId);
+            
             if (existingItem) {
                 return {
                     items: state.items.map((i) =>
-                        i.menuItem.itemId === menuItem.itemId
+                        i.cartItemId === cartItemId
                             ? { ...i, quantity: i.quantity + 1, specialInstructions: specialInstructions || i.specialInstructions }
                             : i
                     ),
                 };
             }
-            return { items: [...state.items, { menuItem, quantity: 1, specialInstructions }] };
+            return { 
+                items: [...state.items, { 
+                    cartItemId, 
+                    menuItem, 
+                    quantity: 1, 
+                    specialInstructions,
+                    selectedAddOns 
+                }] 
+            };
         });
     },
 
-    removeItem: (itemId: string) => {
+    removeItem: (cartItemId: string) => {
         set((state) => ({
-            items: state.items.filter((i) => i.menuItem.itemId !== itemId),
+            items: state.items.filter((i) => i.cartItemId !== cartItemId),
         }));
     },
 
-    incrementQuantity: (itemId: string) => {
+    incrementQuantity: (cartItemId: string) => {
         set((state) => ({
             items: state.items.map((i) =>
-                i.menuItem.itemId === itemId ? { ...i, quantity: i.quantity + 1 } : i
+                i.cartItemId === cartItemId ? { ...i, quantity: i.quantity + 1 } : i
             ),
         }));
     },
 
-    decrementQuantity: (itemId: string) => {
+    decrementQuantity: (cartItemId: string) => {
         set((state) => {
-            const item = state.items.find((i) => i.menuItem.itemId === itemId);
+            const item = state.items.find((i) => i.cartItemId === cartItemId);
             if (item && item.quantity <= 1) {
                 return {
-                    items: state.items.filter((i) => i.menuItem.itemId !== itemId),
+                    items: state.items.filter((i) => i.cartItemId !== cartItemId),
                 };
             }
             return {
                 items: state.items.map((i) =>
-                    i.menuItem.itemId === itemId ? { ...i, quantity: i.quantity - 1 } : i
+                    i.cartItemId === cartItemId ? { ...i, quantity: i.quantity - 1 } : i
                 ),
             };
         });
@@ -65,19 +84,30 @@ export const useCartStore = create<CartState>((set, get) => ({
     clearCart: () => set({ items: [] }),
 
     getCartTotal: () => {
-        return get().items.reduce(
-            (total, item) => total + item.menuItem.price * item.quantity,
-            0
-        );
+        return get().items.reduce((total, item) => {
+            // Base item price
+            let itemTotal = item.menuItem.price;
+            
+            // Add addons price
+            if (item.selectedAddOns) {
+                item.selectedAddOns.forEach(addon => {
+                    itemTotal += (addon.price * addon.quantity);
+                });
+            }
+            
+            // Multiply by cart quantity
+            return total + (itemTotal * item.quantity);
+        }, 0);
     },
 
     getItemCount: () => {
         return get().items.reduce((count, item) => count + item.quantity, 0);
     },
 
+    // Used for showing total quantity of a base item across all customizations
     getItemQuantity: (itemId: string) => {
-        const item = get().items.find((i) => i.menuItem.itemId === itemId);
-        return item ? item.quantity : 0;
+        return get().items
+            .filter((i) => i.menuItem.itemId === itemId)
+            .reduce((total, i) => total + i.quantity, 0);
     },
 }));
-
