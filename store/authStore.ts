@@ -26,7 +26,7 @@ interface AuthState {
     sendOtp: (phoneNumber: string) => Promise<void>;
     verifyOtp: (otp: string) => Promise<boolean>;
     completeRegistration: () => Promise<void>;
-    adminLogin: (pin: string) => Promise<boolean>;
+    adminLogin: (email: string, password: string) => Promise<boolean>;
     signOut: () => Promise<void>;
     updateProfile: (updates: Partial<User>) => Promise<void>;
     checkAuthState: () => () => void; // Returns unsubscribe function
@@ -101,7 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             const userRef = doc(db, 'users', tempUid);
-            const userData: User = {
+            const rawUserData: User = {
                 userId: tempUid,
                 name: customerName || 'User',
                 dob: get().dob || undefined,
@@ -111,6 +111,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 createdAt: Date.now(),
                 role: UserRole.CUSTOMER
             };
+
+            // STRICT FIRESTORE SANITIZATION: deeply strip any literal undefined properties
+            const userData = JSON.parse(JSON.stringify(rawUserData));
+
             await setDoc(userRef, userData);
             await AsyncStorage.setItem('barquee_session', JSON.stringify(userData));
             set({
@@ -128,17 +132,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    adminLogin: async (pin) => {
+    adminLogin: async (email, password) => {
         set({ isLoading: true, error: null });
 
-        const ADMIN_PIN = '1234';
+        await new Promise(resolve => setTimeout(resolve, 800));
 
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        if (pin === ADMIN_PIN) {
+        if (email.trim().toLowerCase() === 'bbqgrillstation@gmail.com' && password === 'bbqgrillstation@123') {
             const adminUser = {
-                userId: 'admin-local',
-                name: 'Admin',
+                userId: '89R6xLBH4MbMC2ZkocYnZd1YYIZ2',
+                name: 'Admin HQ',
                 phoneNumber: '',
                 address: 'Shop Manager',
                 createdAt: Date.now(),
@@ -152,7 +154,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
             return true;
         } else {
-            set({ isLoading: false, error: 'Invalid PIN' });
+            set({ isLoading: false, error: 'Invalid Email or Password' });
             return false;
         }
     },

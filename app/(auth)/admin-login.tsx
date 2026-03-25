@@ -1,7 +1,7 @@
-import { View, Text, Dimensions, StyleSheet, Pressable, TextInput } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, Pressable, TextInput, Alert, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,39 +9,29 @@ import { useAuthStore } from '../../store/authStore';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
-const PIN_LENGTH = 4;
 
 export default function AdminLoginScreen() {
     const router = useRouter();
-    const [pin, setPin] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const inputRef = useRef<TextInput>(null);
     const { adminLogin } = useAuthStore();
 
-    const handlePinChange = (value: string) => {
-        if (value.length <= PIN_LENGTH) {
-            setPin(value);
-            setError('');
-        }
-    };
-
     const handleLogin = async () => {
-        if (pin.length !== PIN_LENGTH) return;
+        if (!email.trim() || !password.trim()) return;
         setIsLoading(true);
         setError('');
 
         try {
-            const success = await adminLogin(pin);
+            const success = await adminLogin(email, password);
             if (success) {
                 router.replace('/(admin)/dashboard');
             } else {
-                setError('Invalid PIN. Try again.');
-                setPin('');
+                setError('Invalid Email or Password. Try again.');
             }
         } catch {
             setError('Login failed. Please try again.');
-            setPin('');
         } finally {
             setIsLoading(false);
         }
@@ -70,50 +60,57 @@ export default function AdminLoginScreen() {
                     </Pressable>
                 </Animated.View>
 
-                {/* Admin Access */}
+                {/* Admin Access Form */}
                 <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.contentSection}>
                     <Text style={styles.title}>Admin Access</Text>
-                    <Text style={styles.description}>Enter your 4-digit staff PIN</Text>
+                    <Text style={styles.description}>Sign in with your admin credentials</Text>
 
-                    {/* PIN Display */}
-                    <Pressable
-                        onPress={() => inputRef.current?.focus()}
-                        style={styles.pinContainer}
-                    >
-                        {Array.from({ length: PIN_LENGTH }).map((_, index) => (
-                            <View
-                                key={index}
-                                style={[
-                                    styles.pinDot,
-                                    pin.length > index && styles.pinDotFilled,
-                                ]}
+                    {/* Email Input */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Email Address</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="mail-outline" size={18} color="#757575" />
+                            <TextInput
+                                placeholder="admin@example.com"
+                                placeholderTextColor="#757575"
+                                value={email}
+                                onChangeText={(val) => { setEmail(val); setError(''); }}
+                                style={styles.textInput}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoComplete="email"
                             />
-                        ))}
-                    </Pressable>
+                        </View>
+                    </View>
 
-                    {/* Hidden TextInput */}
-                    <TextInput
-                        ref={inputRef}
-                        value={pin}
-                        onChangeText={handlePinChange}
-                        keyboardType="number-pad"
-                        maxLength={PIN_LENGTH}
-                        autoFocus
-                        style={styles.hiddenInput}
-                    />
+                    {/* Password Input */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Password</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="lock-closed-outline" size={18} color="#757575" />
+                            <TextInput
+                                placeholder="Enter password"
+                                placeholderTextColor="#757575"
+                                value={password}
+                                onChangeText={(val) => { setPassword(val); setError(''); }}
+                                style={styles.textInput}
+                                secureTextEntry
+                            />
+                        </View>
+                    </View>
 
                     {/* Error Message */}
                     {error ? (
                         <Text style={styles.errorText}>{error}</Text>
                     ) : null}
 
-                    {/* Enter Admin Panel Button */}
+                    {/* Forward Pass */}
                     <Pressable
                         onPress={handleLogin}
-                        disabled={pin.length !== PIN_LENGTH || isLoading}
+                        disabled={!email || !password || isLoading}
                         style={({ pressed }) => [
                             styles.loginButton,
-                            (pin.length !== PIN_LENGTH || isLoading) && { opacity: 0.5 },
+                            (!email || !password || isLoading) && { opacity: 0.5 },
                             pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
                         ]}
                     >
@@ -129,8 +126,7 @@ export default function AdminLoginScreen() {
                         </LinearGradient>
                     </Pressable>
 
-                    {/* Demo hint */}
-                    <Text style={styles.demoText}>Demo PIN: 1234</Text>
+                    {/* Demo hint removed per user request */}
                 </Animated.View>
 
             </SafeAreaView>
@@ -189,31 +185,32 @@ const styles = StyleSheet.create({
         fontFamily: 'Inter_400Regular',
         marginBottom: 36,
     },
-    pinContainer: {
+    inputGroup: {
+        marginBottom: 20,
+    },
+    label: {
+        color: '#E0E0E0',
+        fontSize: 14,
+        fontFamily: 'Inter_500Medium',
+        marginBottom: 8,
+    },
+    inputContainer: {
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
+        gap: 10,
         backgroundColor: '#1E1E1E',
         borderRadius: 16,
-        paddingVertical: 28,
-        paddingHorizontal: 40,
-        marginBottom: 8,
-        gap: 24,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderWidth: 1,
+        borderColor: '#353030',
     },
-    pinDot: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: '#3A3A3A',
-    },
-    pinDotFilled: {
-        backgroundColor: '#FF6A00',
-    },
-    hiddenInput: {
-        position: 'absolute',
-        opacity: 0,
-        height: 0,
-        width: 0,
+    textInput: {
+        flex: 1,
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Inter_500Medium',
+        padding: 0,
     },
     errorText: {
         color: '#EF5350',
@@ -243,12 +240,5 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontFamily: 'Inter_700Bold',
         letterSpacing: 0.5,
-    },
-    demoText: {
-        color: '#5A4030',
-        fontSize: 13,
-        fontFamily: 'Inter_400Regular',
-        textAlign: 'center',
-        marginTop: 20,
     },
 });

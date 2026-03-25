@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,18 +12,58 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 export default function RegisterScreen() {
     const router = useRouter();
     const [name, setName] = useState('');
-    const [dob, setDob] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+    const [showPhotoOptions, setShowPhotoOptions] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const { completeRegistration } = useAuthStore();
 
-    const isValid = name.trim().length > 2 && dob.trim().length > 4; // basic validation
+    const isValid = name.trim().length > 2; // name is required, photo is optional
+
+    const handlePickImage = async (useCamera: boolean) => {
+        setShowPhotoOptions(false);
+
+        if (useCamera) {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Camera access is needed to take a photo.');
+                return;
+            }
+        } else {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Gallery access is needed to select a photo.');
+                return;
+            }
+        }
+
+        const result = useCamera
+            ? await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+            })
+            : await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+            });
+
+        if (!result.canceled && result.assets[0]) {
+            setProfilePhoto(result.assets[0].uri);
+        }
+    };
 
     const handleComplete = async () => {
         if (isValid) {
             setIsLoading(true);
             try {
-                useAuthStore.setState({ customerName: name.trim(), dob: dob.trim() });
+                useAuthStore.setState({ 
+                    customerName: name.trim(), 
+                    profilePhotoUri: profilePhoto || undefined,
+                    dob: undefined 
+                });
                 await completeRegistration();
                 router.replace('/(customer)/home');
             } catch {
@@ -62,20 +104,27 @@ export default function RegisterScreen() {
                             </View>
                         </View>
 
-                        {/* DOB Input */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Date of Birth</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="calendar-outline" size={18} color="#757575" />
-                                <TextInput
-                                    placeholder="DD/MM/YYYY"
-                                    placeholderTextColor="#757575"
-                                    value={dob}
-                                    onChangeText={setDob}
-                                    style={styles.textInput}
-                                    keyboardType="numbers-and-punctuation"
-                                />
-                            </View>
+                        {/* Profile Photo Selector */}
+                        <View style={styles.photoSection}>
+                            <TouchableOpacity
+                                style={styles.avatarContainer}
+                                onPress={() => setShowPhotoOptions(true)}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.avatarGlow}>
+                                    {profilePhoto ? (
+                                        <Image source={{ uri: profilePhoto }} style={styles.avatarImage} contentFit="cover" cachePolicy="memory-disk" />
+                                    ) : (
+                                        <View style={styles.avatarPlaceholder}>
+                                            <Ionicons name="camera" size={32} color="#FF6A00" />
+                                        </View>
+                                    )}
+                                </View>
+                                <View style={styles.cameraBtn}>
+                                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                                </View>
+                            </TouchableOpacity>
+                            <Text style={styles.photoInstruction}>Add a profile photo (optional)</Text>
                         </View>
 
                     </Animated.View>
@@ -104,6 +153,39 @@ export default function RegisterScreen() {
                         </LinearGradient>
                     </Pressable>
                 </View>
+
+                {/* Photo Options Modal */}
+                <Modal visible={showPhotoOptions} transparent animationType="slide" onRequestClose={() => setShowPhotoOptions(false)}>
+                    <Pressable style={styles.modalOverlay} onPress={() => setShowPhotoOptions(false)}>
+                        <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+                            <View style={styles.modalHandle} />
+                            <Text style={styles.modalTitle}>Profile Photo</Text>
+                            <TouchableOpacity style={styles.photoOption} onPress={() => handlePickImage(true)}>
+                                <View style={[styles.photoOptionIcon, { backgroundColor: 'rgba(255,106,0,0.1)' }]}>
+                                    <Ionicons name="camera-outline" size={22} color="#FF6A00" />
+                                </View>
+                                <Text style={styles.photoOptionText}>Take Photo</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.photoOption} onPress={() => handlePickImage(false)}>
+                                <View style={[styles.photoOptionIcon, { backgroundColor: 'rgba(33,150,243,0.1)' }]}>
+                                    <Ionicons name="images-outline" size={22} color="#2196F3" />
+                                </View>
+                                <Text style={styles.photoOptionText}>Choose from Gallery</Text>
+                            </TouchableOpacity>
+                            {profilePhoto && (
+                                <TouchableOpacity style={styles.photoOption} onPress={() => { setProfilePhoto(null); setShowPhotoOptions(false); }}>
+                                    <View style={[styles.photoOptionIcon, { backgroundColor: 'rgba(239,83,80,0.1)' }]}>
+                                        <Ionicons name="trash-outline" size={22} color="#EF5350" />
+                                    </View>
+                                    <Text style={[styles.photoOptionText, { color: '#EF5350' }]}>Remove Photo</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowPhotoOptions(false)}>
+                                <Text style={styles.cancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </Pressable>
+                    </Pressable>
+                </Modal>
             </SafeAreaView>
         </View>
     );
@@ -142,4 +224,36 @@ const styles = StyleSheet.create({
         paddingVertical: 18, borderRadius: 14,
     },
     submitText: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Inter_700Bold' },
+
+    // Photo
+    photoSection: { alignItems: 'center', marginBottom: 32, marginTop: 10 },
+    avatarContainer: { position: 'relative' },
+    avatarGlow: {
+        width: 100, height: 100, borderRadius: 50,
+        borderWidth: 2, borderColor: 'rgba(255,106,0,0.4)',
+        padding: 3, backgroundColor: 'rgba(255,106,0,0.05)',
+    },
+    avatarPlaceholder: {
+        flex: 1, borderRadius: 50, backgroundColor: 'rgba(255,106,0,0.08)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    avatarImage: { flex: 1, borderRadius: 50 },
+    cameraBtn: {
+        position: 'absolute', bottom: 0, right: 0,
+        width: 30, height: 30, borderRadius: 15,
+        backgroundColor: '#FF6A00', alignItems: 'center', justifyContent: 'center',
+        borderWidth: 3, borderColor: '#0D0D0D',
+    },
+    photoInstruction: { color: '#757575', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12 },
+
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#1E1E1E', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 40 },
+    modalHandle: { width: 40, height: 4, backgroundColor: '#555', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    modalTitle: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold', textAlign: 'center', marginBottom: 20 },
+    photoOption: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, backgroundColor: '#252121', borderRadius: 14, marginBottom: 10, borderWidth: 1, borderColor: '#353030' },
+    photoOptionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    photoOptionText: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+    cancelBtn: { padding: 16, alignItems: 'center', marginTop: 4 },
+    cancelText: { color: '#757575', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });

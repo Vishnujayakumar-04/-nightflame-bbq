@@ -234,7 +234,7 @@ export default function MenuManagementScreen() {
                 data={filteredItems}
                 keyExtractor={item => item.itemId}
                 renderItem={renderMenuItem}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 ListFooterComponent={

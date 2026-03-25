@@ -120,7 +120,7 @@ export default function WalkInOrderScreen() {
             <FlatList
                 data={availableItems}
                 keyExtractor={item => item.itemId}
-                contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+                contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
                 showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 renderItem={({ item }) => {
@@ -161,7 +161,7 @@ export default function WalkInOrderScreen() {
 
     // Step 2: Review & Place
     const renderStep2 = () => (
-        <Animated.ScrollView entering={FadeInDown.duration(400)} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+        <Animated.ScrollView entering={FadeInDown.duration(400)} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
             {/* Customer Name */}
             <Text style={styles.sectionLabel}>Customer Name (Optional)</Text>
             <View style={styles.nameInput}>

@@ -130,19 +130,13 @@ export default function AdminLayout() {
                 <Tabs.Screen
                     name="menu-management"
                     options={{
-                        title: 'Menu',
-                        tabBarIcon: ({ color, focused }) => (
-                            <Ionicons name={focused ? "restaurant" : "restaurant-outline"} size={22} color={color} />
-                        ),
+                        href: null,
                     }}
                 />
                 <Tabs.Screen
                     name="analytics"
                     options={{
-                        title: 'Analytics',
-                        tabBarIcon: ({ color, focused }) => (
-                            <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={22} color={color} />
-                        ),
+                        href: null,
                     }}
                 />
                 <Tabs.Screen
@@ -151,6 +145,15 @@ export default function AdminLayout() {
                         title: 'Pay',
                         tabBarIcon: ({ color }) => (
                             <Text style={{ fontSize: 22, fontWeight: '900', color }}>₹</Text>
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="profile"
+                    options={{
+                        title: 'Profile',
+                        tabBarIcon: ({ color, focused }) => (
+                            <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} />
                         ),
                     }}
                 />

@@ -14,7 +14,7 @@ import { formatCurrency, formatOrderIdShort, getRelativeTime } from '../../utils
 
 
 
-const FILTERS = ['All', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'] as const;
+const FILTERS = ['All', 'Pending', 'Accepted', 'Preparing', 'Ready', 'Completed'] as const;
 type FilterType = typeof FILTERS[number];
 
 export default function AdminOrdersScreen() {
@@ -169,8 +169,8 @@ export default function AdminOrdersScreen() {
                     data={filteredOrders}
                     keyExtractor={item => item.orderId}
                     renderItem={renderOrderCard}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+                    showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>

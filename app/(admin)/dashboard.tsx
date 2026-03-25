@@ -28,11 +28,10 @@ export default function AdminDashboardScreen() {
     const { status, subscribeToStatus, updateStatus } = useShopStore();
 
     const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Order | null>(null);
-    const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
     const [isPaymentModalVisible, setPaymentModalVisible] = useState(false);
-    const [isActionModalVisible, setActionModalVisible] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [showSpecialPicker, setShowSpecialPicker] = useState(false);
+    const [showTimeModal, setShowTimeModal] = useState(false);
 
     const currentSpecialItem = menuItems.find(i => i.itemId === status?.todaySpecialItemId) || null;
 
@@ -83,17 +82,14 @@ export default function AdminDashboardScreen() {
         }
         return sum;
     }, 0);
-
-    const activeOrdersCount = activeOrders.length;
     const todayOrdersCount = todayOrders.length;
+    const activeOrdersCount = activeOrders.length;
 
     // Live queue counts
     const pendingCount = activeOrders.filter(o => o.status === OrderStatus.PENDING).length;
     const confirmedCount = activeOrders.filter(o => o.status === OrderStatus.ACCEPTED).length;
     const preparingCount = activeOrders.filter(o => o.status === OrderStatus.PREPARING).length;
     const readyCount = activeOrders.filter(o => o.status === OrderStatus.READY).length;
-
-    const recentOrders = activeOrders.slice(0, 5);
 
 
 
@@ -163,82 +159,29 @@ export default function AdminDashboardScreen() {
                         </View>
                     ))}
                 </Animated.View>
-
-                {/* Quick Action Buttons */}
-                <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.actionRow}>
-                    <TouchableOpacity
-                        style={styles.walkInBtn}
-                        onPress={() => router.push('/(admin)/walk-in')}
-                    >
-                        <Ionicons name="people-outline" size={18} color="#FFFFFF" />
-                        <Text style={styles.walkInText}>Walk-in Order</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.analyticsBtn}
-                        onPress={() => router.push('/(admin)/analytics')}
-                    >
-                        <Ionicons name="trending-up" size={18} color="#FFFFFF" />
-                        <Text style={styles.analyticsText}>Analytics</Text>
-                    </TouchableOpacity>
-                </Animated.View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-                {/* SHOP CONTROL CENTER */}
-                <Text style={styles.sectionLabel}>SHOP CONTROL CENTER</Text>
-                <Animated.View entering={FadeInDown.delay(350).duration(600)} style={styles.controlCard}>
-                    <View style={styles.controlRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.controlTitle}>Live Shop Status</Text>
-                            <Text style={styles.controlSub}>{status?.isOpen ? 'Shop is currently accepting orders' : 'Shop is hidden from orders'}</Text>
-                        </View>
-                        <Switch
-                            value={status?.isOpen}
-                            onValueChange={(val) => updateStatus({ isOpen: val })}
-                            trackColor={{ false: '#3A3A3A', true: 'rgba(76, 175, 80, 0.4)' }}
-                            thumbColor={status?.isOpen ? '#4CAF50' : '#757575'}
-                        />
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.timeInputsRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.inputLabel}>Open Time</Text>
-                            <TextInput
-                                style={styles.timeInput}
-                                value={status?.openTime}
-                                onChangeText={(t) => updateStatus({ openTime: t })}
-                                placeholder="06:00 PM"
-                                placeholderTextColor="#555"
-                            />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.inputLabel}>Close Time</Text>
-                            <TextInput
-                                style={styles.timeInput}
-                                value={status?.closeTime}
-                                onChangeText={(t) => updateStatus({ closeTime: t })}
-                                placeholder="11:00 PM"
-                                placeholderTextColor="#555"
-                            />
-                        </View>
-                    </View>
-
-                    {!status?.isOpen && (
-                        <View style={{ marginTop: 16 }}>
-                            <Text style={styles.inputLabel}>Closing Message (Visible to customer)</Text>
-                            <TextInput
-                                style={styles.messageInput}
-                                value={status?.message}
-                                onChangeText={(m) => updateStatus({ message: m })}
-                                placeholder="come on tomm to have have spicy chicken"
-                                placeholderTextColor="#555"
-                                multiline
-                            />
-                        </View>
-                    )}
+                {/* OWNER CONTROLS GRID */}
+                <Text style={styles.sectionLabel}>OWNER CONTROLS</Text>
+                <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.gridContainer}>
+                    <TouchableOpacity style={styles.gridBtnPrimary} onPress={() => router.push('/(admin)/walk-in')}>
+                        <Ionicons name="people" size={32} color="#FFFFFF" />
+                        <Text style={styles.gridBtnTextPrimary}>Walk-in</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.gridBtn} onPress={() => router.push('/(admin)/orders')}>
+                        <Ionicons name="receipt" size={32} color="#FF6A00" />
+                        <Text style={styles.gridBtnText}>Orders</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.gridBtn} onPress={() => router.push('/(admin)/menu-management')}>
+                        <Ionicons name="restaurant" size={32} color="#FF6A00" />
+                        <Text style={styles.gridBtnText}>Menu</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.gridBtn} onPress={() => setShowTimeModal(true)}>
+                        <Ionicons name="time" size={32} color="#FF6A00" />
+                        <Text style={styles.gridBtnText}>Time</Text>
+                    </TouchableOpacity>
                 </Animated.View>
 
                 {/* TODAY'S SPECIAL */}
@@ -260,61 +203,6 @@ export default function AdminDashboardScreen() {
                     </TouchableOpacity>
                 </Animated.View>
 
-
-                {/* Recent Orders */}
-                <View style={styles.recentHeader}>
-                    <Text style={[styles.sectionLabel, { marginBottom: 0, paddingHorizontal: 0 }]}>RECENT ORDERS</Text>
-                    <TouchableOpacity onPress={() => router.push('/(admin)/orders')}>
-                        <Text style={styles.seeAllText}>See All</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {recentOrders.length === 0 ? (
-                    <Text style={{ textAlign: 'center', color: '#757575', marginTop: 10 }}>No active orders right now</Text>
-                ) : (
-                    recentOrders.map((item, index) => (
-                        <Animated.View key={item.orderId} entering={FadeInDown.delay(400 + index * 50).duration(500)}>
-                            <TouchableOpacity
-                                style={styles.orderCard}
-                                activeOpacity={0.85}
-                                onPress={() => {
-                                    setSelectedOrderForAction(item);
-                                    setActionModalVisible(true);
-                                }}
-                            >
-                                <View style={styles.orderCardHeader}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <Text style={styles.orderIdText}>{formatOrderIdShort(item)}</Text>
-                                        {!item.userId || item.userId === 'walk-in' ? (
-                                            <View style={styles.walkInTag}>
-                                                <Text style={styles.walkInTagText}>Walk-in</Text>
-                                            </View>
-                                        ) : null}
-                                    </View>
-                                    <View style={[styles.badge, { backgroundColor: 'rgba(255, 106, 0, 0.15)' }]}>
-                                        <Text style={[styles.badgeText, { color: '#FF6A00' }]}>{item.status.toUpperCase()}</Text>
-                                    </View>
-                                </View>
-
-                                <Text style={styles.orderCustomer}>{item.customerName || 'Customer'}</Text>
-                                <Text style={styles.orderItemsText} numberOfLines={1}>
-                                    {item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(' | ')}
-                                </Text>
-
-                                <View style={styles.orderCardFooter}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                        <Ionicons name="time-outline" size={14} color="#757575" />
-                                        <Text style={styles.orderTimeText}>
-                                            {Math.floor((Date.now() - item.timestamp) / 60000)}m ago
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.orderAmount}>{formatCurrency(item.totalAmount)}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    ))
-                )}
-
             </ScrollView>
 
             {
@@ -331,25 +219,7 @@ export default function AdminDashboardScreen() {
                 )
             }
 
-            <AdminActionModal
-                visible={isActionModalVisible}
-                order={selectedOrderForAction}
-                onClose={() => {
-                    setActionModalVisible(false);
-                    setSelectedOrderForAction(null);
-                }}
-                onUpdateStatus={(id, status) => {
-                    updateOrderStatus(id, status);
-                    setActionModalVisible(false);
-                }}
-                onCollectPayment={(order) => {
-                    setSelectedOrderForPayment(order);
-                    setPaymentModalVisible(true);
-                    setActionModalVisible(false);
-                    // Lock in background to avoid blocking UI transition
-                    lockOrder(order.orderId).catch(console.error);
-                }}
-            />
+
 
             {/* Today's Special Picker Modal */}
             <Modal visible={showSpecialPicker} transparent animationType="slide" onRequestClose={() => setShowSpecialPicker(false)}>
@@ -396,6 +266,75 @@ export default function AdminDashboardScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            {/* SHOP STATUS MODAL */}
+            <Modal visible={showTimeModal} transparent animationType="slide" onRequestClose={() => setShowTimeModal(false)}>
+                <Pressable style={specialStyles.overlay} onPress={() => setShowTimeModal(false)}>
+                    <Pressable style={specialStyles.content} onPress={(e) => e.stopPropagation()}>
+                        <View style={specialStyles.handle} />
+                        <Text style={specialStyles.title}>Live Shop Status</Text>
+                        
+                        <View style={styles.controlRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.controlTitle}>Shop is {status?.isOpen ? 'OPEN' : 'CLOSED'}</Text>
+                                <Text style={styles.controlSub}>{status?.isOpen ? 'Accepting orders' : 'Hidden from customers'}</Text>
+                            </View>
+                            <Switch
+                                value={status?.isOpen}
+                                onValueChange={(val) => updateStatus({ isOpen: val })}
+                                trackColor={{ false: '#3A3A3A', true: 'rgba(76, 175, 80, 0.4)' }}
+                                thumbColor={status?.isOpen ? '#4CAF50' : '#757575'}
+                            />
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.timeInputsRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Open Time</Text>
+                                <TextInput
+                                    style={styles.timeInput}
+                                    value={status?.openTime}
+                                    onChangeText={(t) => updateStatus({ openTime: t })}
+                                    placeholder="06:00 PM"
+                                    placeholderTextColor="#555"
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Close Time</Text>
+                                <TextInput
+                                    style={styles.timeInput}
+                                    value={status?.closeTime}
+                                    onChangeText={(t) => updateStatus({ closeTime: t })}
+                                    placeholder="11:00 PM"
+                                    placeholderTextColor="#555"
+                                />
+                            </View>
+                        </View>
+
+                        {!status?.isOpen && (
+                            <View style={{ marginTop: 16 }}>
+                                <Text style={styles.inputLabel}>Closing Message</Text>
+                                <TextInput
+                                    style={styles.messageInput}
+                                    value={status?.message}
+                                    onChangeText={(m) => updateStatus({ message: m })}
+                                    placeholder="Message for customers"
+                                    placeholderTextColor="#555"
+                                    multiline
+                                />
+                            </View>
+                        )}
+
+                        <TouchableOpacity
+                            style={[specialStyles.clearBtn, { borderColor: '#4CAF50', marginTop: 24 }]}
+                            onPress={() => setShowTimeModal(false)}
+                        >
+                            <Text style={[specialStyles.clearText, { color: '#4CAF50' }]}>Done</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView >
     );
 }
@@ -404,7 +343,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#1A1818' },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
+        paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     adminBadge: {
@@ -418,61 +357,67 @@ const styles = StyleSheet.create({
         backgroundColor: '#252121', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
     },
     logoutText: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Urbanist_400Regular' },
-    statsContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 16 },
+    statsContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 12 },
     revenueCard: {
-        flex: 1.5, backgroundColor: '#FF6A00', borderRadius: 16, padding: 16, justifyContent: 'center',
+        flex: 1.5, backgroundColor: '#FF6A00', borderRadius: 16, padding: 14, justifyContent: 'center',
     },
     revenueLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 20, fontFamily: 'Urbanist_700Bold' },
     revenueAmount: { color: '#FFFFFF', fontSize: 24, fontFamily: 'Urbanist_700Bold', marginTop: 2 },
     revenueSubLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Urbanist_400Regular', marginTop: 3 },
     statsColumn: { flex: 1, gap: 10 },
     statBox: {
-        flex: 1, backgroundColor: '#252121', borderRadius: 16, padding: 12, justifyContent: 'center',
+        flex: 1, backgroundColor: '#252121', borderRadius: 16, padding: 10, justifyContent: 'center',
         elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8,
     },
     statNumber: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Urbanist_800ExtraBold' },
     statBoxLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Urbanist_500Medium', marginTop: 2 },
     sectionLabel: {
         color: '#757575', fontSize: 11, fontFamily: 'Urbanist_600SemiBold', letterSpacing: 1,
-        paddingHorizontal: 16, marginBottom: 10,
+        paddingHorizontal: 16, marginBottom: 6,
     },
-    queueRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 6, marginBottom: 16 },
+    queueRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 6, marginBottom: 12 },
     queueItem: {
-        flex: 1, backgroundColor: '#252121', borderRadius: 12, padding: 12, alignItems: 'center',
+        flex: 1, backgroundColor: '#252121', borderRadius: 12, padding: 10, alignItems: 'center',
         borderWidth: 1,
     },
     queueCount: { fontSize: 20, fontFamily: 'Urbanist_700Bold' },
     queueLabel: { color: '#A5A2A2', fontSize: 10, fontFamily: 'Urbanist_400Regular', marginTop: 3 },
-    actionRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 20 },
-    walkInBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-        backgroundColor: '#FF6A00', paddingVertical: 12, borderRadius: 12,
+    gridContainer: {
+        flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 4, rowGap: 10,
     },
-    walkInText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Urbanist_700Bold' },
-    analyticsBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-        backgroundColor: '#252121', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#353030',
+    gridBtnPrimary: {
+        width: '48%', aspectRatio: 1, backgroundColor: '#FF6A00', borderRadius: 24,
+        alignItems: 'center', justifyContent: 'center', gap: 6,
+        elevation: 8, shadowColor: '#FF6A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10,
     },
-    analyticsText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Urbanist_600SemiBold' },
+    gridBtn: {
+        width: '48%', aspectRatio: 1, backgroundColor: '#252121', borderRadius: 24,
+        alignItems: 'center', justifyContent: 'center', gap: 6,
+        borderWidth: 1, borderColor: '#353030',
+        elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
+    },
+    gridBtnTextPrimary: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Urbanist_700Bold', textAlign: 'center' },
+    gridBtnText: { color: '#A5A2A2', fontSize: 14, fontFamily: 'Urbanist_600SemiBold', textAlign: 'center' },
     controlCard: {
         backgroundColor: '#252121',
         marginHorizontal: 16,
         borderRadius: 16,
-        padding: 16,
+        padding: 14,
         borderWidth: 1,
         borderColor: '#353030',
-        marginBottom: 20,
+        marginBottom: 12,
     },
-    controlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    controlRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
     controlTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Urbanist_700Bold' },
     controlSub: { color: '#757575', fontSize: 11, fontFamily: 'Urbanist_400Regular', marginTop: 2 },
-    divider: { height: 1, backgroundColor: '#353030', marginVertical: 12 },
+    divider: { height: 1, backgroundColor: '#353030', marginVertical: 10 },
     timeInputsRow: { flexDirection: 'row', gap: 10 },
-    inputLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Urbanist_600SemiBold', marginBottom: 6 },
+    inputLabel: { color: '#A5A2A2', fontSize: 11, fontFamily: 'Urbanist_600SemiBold', marginBottom: 4 },
     timeInput: {
         backgroundColor: '#1A1818',
         borderRadius: 10,
-        padding: 10,
+        padding: 8,
         color: '#FFFFFF',
         fontFamily: 'Urbanist_600SemiBold',
         borderWidth: 1,
@@ -481,36 +426,20 @@ const styles = StyleSheet.create({
     messageInput: {
         backgroundColor: '#1A1818',
         borderRadius: 10,
-        padding: 12,
+        padding: 10,
         color: '#FFFFFF',
         fontFamily: 'Urbanist_400Regular',
         borderWidth: 1,
         borderColor: '#353030',
-        minHeight: 70,
+        minHeight: 60,
         textAlignVertical: 'top',
     },
-    recentHeader: {
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 16, marginBottom: 10,
-    },
-    seeAllText: { color: '#FF6A00', fontSize: 13, fontFamily: 'Urbanist_600SemiBold' },
-    orderCard: {
-        backgroundColor: '#252121', marginHorizontal: 16, marginBottom: 12, borderRadius: 20,
-        padding: 16, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10,
-    },
-    orderCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    orderIdText: { color: '#FF6A00', fontSize: 14, fontFamily: 'Urbanist_700Bold' },
     walkInTag: {
         backgroundColor: 'rgba(255, 193, 7, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     },
     walkInTagText: { color: '#FFC107', fontSize: 10, fontFamily: 'Urbanist_700Bold' },
-    orderCustomer: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Urbanist_700Bold', marginBottom: 4 },
-    orderItemsText: { color: '#A5A2A2', fontSize: 13, fontFamily: 'Urbanist_400Regular', marginBottom: 12 },
-    orderCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    orderTimeText: { color: '#757575', fontSize: 12, fontFamily: 'Urbanist_400Regular' },
     badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     badgeText: { fontSize: 10, fontFamily: 'Urbanist_700Bold' },
-    orderAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Urbanist_700Bold' },
 });
 
 const specialStyles = StyleSheet.create({
