@@ -55,7 +55,7 @@ export default function RoleSelectionScreen() {
                 {/* Centered Logo */}
                 <Animated.View entering={FadeIn.duration(800)} style={styles.logoWrapper}>
                     <Image
-                        source={require('../../assets/logo.png')}
+                        source={require('../../assets/logo_brand.png')}
                         style={styles.centerLogo}
                         contentFit="contain"
                         cachePolicy="memory-disk"
@@ -92,13 +92,7 @@ export default function RoleSelectionScreen() {
                     />
                 </View>
 
-                {/* Footer Section */}
-                <Animated.View entering={FadeInDown.delay(700).duration(700)} style={styles.footer}>
-                    <Text style={styles.demoText}>Demo Environment Active</Text>
-                    <View style={styles.demoBadge}>
-                        <Text style={styles.demoBadgeText}>PIN: 1234</Text>
-                    </View>
-                </Animated.View>
+
 
             </SafeAreaView>
         </View>

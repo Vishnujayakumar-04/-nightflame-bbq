@@ -9,19 +9,20 @@ import { useAuthStore } from '../../store/authStore';
 import { useOrderStore } from '../../store/orderStore';
 import { useShopStore } from '../../store/shopStore';
 import { useMenuStore } from '../../store/menuStore';
-import { PaymentMethod } from '../../constants/enums';
+import { PaymentMethod, OrderStatus, PaymentStatus } from '../../constants/enums';
 import { Order } from '../../types/models';
 import { useState } from 'react';
 import { TextInput, Switch } from 'react-native';
 import { AdminPaymentModal } from '../../components/AdminPaymentModal';
 import { AdminActionModal } from '../../components/AdminActionModal';
+import { formatCurrency, formatOrderIdShort } from '../../utils/formatters';
 
-const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
+
 
 
 export default function AdminDashboardScreen() {
     const router = useRouter();
-    const { subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
+    const { orders, subscribeToOrders, updateOrderStatus, confirmPayment, lockOrder, unlockOrder } = useOrderStore();
     const { signOut } = useAuthStore();
     const { menuItems, subscribeToMenu } = useMenuStore();
     const { status, subscribeToStatus, updateStatus } = useShopStore();
@@ -46,8 +47,6 @@ export default function AdminDashboardScreen() {
         };
     }, []);
 
-
-
     const handleConfirmPayment = async (method: PaymentMethod.CASH | PaymentMethod.UPI, transactionId?: string) => {
         if (!selectedOrderForPayment) return;
         setIsProcessingPayment(true);
@@ -71,17 +70,30 @@ export default function AdminDashboardScreen() {
         setSelectedOrderForPayment(null);
     };
 
+    // Calculate dynamic stats
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-    // todayOrders intentionally unused — kept for potential future use
-    const todayRevenue = 0;
-    const activeOrdersCount = 0;
-    const todayOrdersCount = 0;
+    const todayOrders = orders.filter(o => o.timestamp >= startOfToday);
+    const activeOrders = orders.filter(o => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED);
 
-    // Live queue counts - Forced to 0
-    const pendingCount = 0;
-    const preparingCount = 0;
-    const readyCount = 0;
-    const confirmedCount = 0;
+    const todayRevenue = todayOrders.reduce((sum, order) => {
+        if (order.status !== OrderStatus.CANCELLED && (order.paymentStatus === PaymentStatus.PAID || order.status === OrderStatus.COMPLETED)) {
+            return sum + order.totalAmount;
+        }
+        return sum;
+    }, 0);
+
+    const activeOrdersCount = activeOrders.length;
+    const todayOrdersCount = todayOrders.length;
+
+    // Live queue counts
+    const pendingCount = activeOrders.filter(o => o.status === OrderStatus.PENDING).length;
+    const confirmedCount = activeOrders.filter(o => o.status === OrderStatus.ACCEPTED).length;
+    const preparingCount = activeOrders.filter(o => o.status === OrderStatus.PREPARING).length;
+    const readyCount = activeOrders.filter(o => o.status === OrderStatus.READY).length;
+
+    const recentOrders = activeOrders.slice(0, 5);
 
 
 
@@ -249,13 +261,59 @@ export default function AdminDashboardScreen() {
                 </Animated.View>
 
 
-                {/* Recent Orders - Hidden as requested */}
-                {/* 
+                {/* Recent Orders */}
                 <View style={styles.recentHeader}>
-                    ...
+                    <Text style={[styles.sectionLabel, { marginBottom: 0, paddingHorizontal: 0 }]}>RECENT ORDERS</Text>
+                    <TouchableOpacity onPress={() => router.push('/(admin)/orders')}>
+                        <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                 </View>
-                {recentOrders.map(...)}
-                */}
+
+                {recentOrders.length === 0 ? (
+                    <Text style={{ textAlign: 'center', color: '#757575', marginTop: 10 }}>No active orders right now</Text>
+                ) : (
+                    recentOrders.map((item, index) => (
+                        <Animated.View key={item.orderId} entering={FadeInDown.delay(400 + index * 50).duration(500)}>
+                            <TouchableOpacity
+                                style={styles.orderCard}
+                                activeOpacity={0.85}
+                                onPress={() => {
+                                    setSelectedOrderForAction(item);
+                                    setActionModalVisible(true);
+                                }}
+                            >
+                                <View style={styles.orderCardHeader}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <Text style={styles.orderIdText}>{formatOrderIdShort(item)}</Text>
+                                        {!item.userId || item.userId === 'walk-in' ? (
+                                            <View style={styles.walkInTag}>
+                                                <Text style={styles.walkInTagText}>Walk-in</Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
+                                    <View style={[styles.badge, { backgroundColor: 'rgba(255, 106, 0, 0.15)' }]}>
+                                        <Text style={[styles.badgeText, { color: '#FF6A00' }]}>{item.status.toUpperCase()}</Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.orderCustomer}>{item.customerName || 'Customer'}</Text>
+                                <Text style={styles.orderItemsText} numberOfLines={1}>
+                                    {item.items.map(i => `${i.menuItem.name} ×${i.quantity}`).join(' | ')}
+                                </Text>
+
+                                <View style={styles.orderCardFooter}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                        <Ionicons name="time-outline" size={14} color="#757575" />
+                                        <Text style={styles.orderTimeText}>
+                                            {Math.floor((Date.now() - item.timestamp) / 60000)}m ago
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.orderAmount}>{formatCurrency(item.totalAmount)}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    ))
+                )}
 
             </ScrollView>
 

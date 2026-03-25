@@ -4,9 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, ZoomIn, useSharedValue, withRepeat, withTiming, Easing, useAnimatedStyle } from 'react-native-reanimated';
 import { useShopStore } from '../../store/shopStore';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const { width } = Dimensions.get('window');
 const PHOTO_WIDTH = width * 0.72;
@@ -26,15 +26,44 @@ const SHOP_PHOTOS = [
     require('../../assets/shopphoto/2024-03-10 (1).jpeg'),
 ];
 
+const AutoScrollGallery = () => {
+    const totalWidth = (PHOTO_WIDTH + PHOTO_GAP) * SHOP_PHOTOS.length;
+    const translateX = useSharedValue(0);
+
+    useEffect(() => {
+        translateX.value = withRepeat(
+            withTiming(-totalWidth, {
+                duration: 25000,
+                easing: Easing.linear,
+            }),
+            -1,
+            false
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: translateX.value }],
+    }));
+
+    // Clone the gallery items twice so there's no visual gap when repeating
+    const infinitePhotos = [...SHOP_PHOTOS, ...SHOP_PHOTOS, ...SHOP_PHOTOS];
+
+    return (
+        <View style={{ overflow: 'hidden', width: '100%', height: 180, marginBottom: 12 }}>
+            <Animated.View style={[{ flexDirection: 'row', width: totalWidth * 3 }, animatedStyle]}>
+                {infinitePhotos.map((photo, idx) => (
+                    <View key={idx} style={{ marginRight: PHOTO_GAP, marginLeft: idx === 0 ? 24 : 0 }}>
+                        <Image source={photo} style={s.galleryImg} contentFit="cover" cachePolicy="memory-disk" />
+                    </View>
+                ))}
+            </Animated.View>
+        </View>
+    );
+};
+
 export default function ShopDetailsScreen() {
     const router = useRouter();
     const { status } = useShopStore();
-    const [activePhoto, setActivePhoto] = useState(0);
-
-    const handleScroll = (event: any) => {
-        const idx = Math.round(event.nativeEvent.contentOffset.x / (PHOTO_WIDTH + PHOTO_GAP));
-        if (idx !== activePhoto) setActivePhoto(idx);
-    };
 
     return (
         <LinearGradient colors={['#1A1818', '#1D1510']} style={{ flex: 1 }}>
@@ -57,7 +86,7 @@ export default function ShopDetailsScreen() {
                             style={s.heroBg}
                         />
                         <View style={s.logoRing}>
-                            <Image source={require('../../assets/logo.png')} style={s.logo} contentFit="contain" cachePolicy="memory-disk" />
+                            <Image source={require('../../assets/logo_brand.png')} style={s.logo} contentFit="contain" cachePolicy="memory-disk" />
                         </View>
                         <Text style={s.shopName}>{SHOP_NAME}</Text>
                         <Text style={s.tagline}>{SHOP_TAGLINE}</Text>
@@ -80,30 +109,7 @@ export default function ShopDetailsScreen() {
                         <Ionicons name="images-outline" size={16} color="#FF6A00" />
                         <Text style={s.sectionLabel}>Gallery</Text>
                     </View>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                        contentContainerStyle={{ paddingHorizontal: 24 }}
-                        snapToInterval={PHOTO_WIDTH + PHOTO_GAP}
-                        decelerationRate="fast"
-                    >
-                        {SHOP_PHOTOS.map((photo, idx) => (
-                            <Animated.View
-                                key={idx}
-                                entering={ZoomIn.duration(400).delay(idx * 150).springify()}
-                                style={{ marginRight: idx < SHOP_PHOTOS.length - 1 ? PHOTO_GAP : 0 }}
-                            >
-                                <Image source={photo} style={s.galleryImg} contentFit="cover" cachePolicy="memory-disk" />
-                            </Animated.View>
-                        ))}
-                    </ScrollView>
-                    <View style={s.dots}>
-                        {SHOP_PHOTOS.map((_, idx) => (
-                            <View key={idx} style={[s.dot, idx === activePhoto && s.dotActive]} />
-                        ))}
-                    </View>
+                    <AutoScrollGallery />
 
                     {/* Contact */}
                     <View style={s.sectionRow}>

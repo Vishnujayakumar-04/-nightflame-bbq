@@ -10,20 +10,9 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { AdminPaymentModal } from '../../components/AdminPaymentModal';
 import { AdminActionModal } from '../../components/AdminActionModal';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
+import { formatCurrency, formatOrderIdShort, getRelativeTime } from '../../utils/formatters';
 
-const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatOrderIdShort = (order: Order) => {
-    if (order.orderNumber) {
-        return `#${String(order.runningNumber).padStart(3, '0')}`;
-    }
-    return `#${order.orderId.substring(0, 4).toUpperCase()}`;
-};
-const getRelativeTime = (timestamp: number) => {
-    const diff = Math.floor((Date.now() - timestamp) / 60000);
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${diff}m ago`;
-    return `${Math.floor(diff / 60)}h ago`;
-};
+
 
 const FILTERS = ['All', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'] as const;
 type FilterType = typeof FILTERS[number];
@@ -77,11 +66,12 @@ export default function AdminOrdersScreen() {
     }, [orders]);
 
     const filteredOrders = useMemo(() => {
-        if (activeFilter === 'All') return orders;
+        if (activeFilter === 'All') return activeOrders;
         return orders.filter(o => o.status === activeFilter.toLowerCase());
-    }, [orders, activeFilter]);
+    }, [orders, activeOrders, activeFilter]);
+    
     const getFilterCount = (filter: FilterType) => {
-        if (filter === 'All') return orders.length;
+        if (filter === 'All') return activeOrders.length;
         return orders.filter(o => o.status === filter.toLowerCase()).length;
     };
 

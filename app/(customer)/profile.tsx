@@ -14,7 +14,7 @@ import { OrderStatus } from '../../constants/enums';
 
 
 
-const SHOP_PHONE = '+919876543210';
+const SHOP_PHONE = '+919894402440';
 const SHOP_EMAIL = 'barqueegrillstation@example.com';
 
 function ProfileScreen() {

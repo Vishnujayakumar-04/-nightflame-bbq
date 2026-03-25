@@ -17,11 +17,9 @@ import { PaymentSelectionModal } from '../../components/PaymentSelectionModal';
 
 import { PaymentType, PaymentStatus, PaymentMethod } from '../../constants/enums';
 import { getMenuItemImage } from '../../constants/menuImages';
+import { formatCurrency, formatTime } from '../../utils/formatters';
 
-const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-};
+
 
 const SLIDER_HEIGHT = 60;
 const THUMB_SIZE = 52;
@@ -322,6 +320,8 @@ export default function CartScreen() {
         try {
             const newOrderId = await placeOrder({
                 userId: user.userId,
+                customerName: user.name,
+                phoneNumber: user.phoneNumber,
                 items,
                 totalAmount: cartTotal,
                 pickupTime: selectedTime.getTime(),
@@ -400,7 +400,7 @@ export default function CartScreen() {
                                 {/* Item Image */}
                                 <View style={styles.cartItemImageContainer}>
                                     {item.imageUrl ? (
-                                        <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.cartItemImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
+                                        <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo_brand.png')} style={styles.cartItemImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                                     ) : localImg ? (
                                         <Image source={localImg} style={styles.cartItemImage} contentFit="cover" />
                                     ) : (

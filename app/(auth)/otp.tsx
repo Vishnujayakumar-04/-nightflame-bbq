@@ -62,10 +62,8 @@ export default function OtpVerificationScreen() {
                         />
                     </View>
 
-                    {error ? (
+                    {error && (
                         <Text style={styles.errorText}>{error}</Text>
-                    ) : (
-                        <Text style={styles.hintText}>Demo PIN: 123456</Text>
                     )}
                 </Animated.View>
 

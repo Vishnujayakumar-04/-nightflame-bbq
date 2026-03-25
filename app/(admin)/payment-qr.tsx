@@ -191,21 +191,7 @@ export default function PaymentQRScreen() {
                         </View>
                     </View>
 
-                    {/* Quick Stats */}
-                    <View style={styles.quickStats}>
-                        <View style={[styles.quickStatCard, { borderColor: '#4CAF50' }]}>
-                            <Text style={[styles.quickStatValue, { color: '#4CAF50' }]}>{formatCurrency(paidTotal)}</Text>
-                            <Text style={styles.quickStatLabel}>Collected Today</Text>
-                        </View>
-                        <View style={[styles.quickStatCard, { borderColor: '#FF6A00' }]}>
-                            <Text style={[styles.quickStatValue, { color: '#FF6A00' }]}>{paidCount}</Text>
-                            <Text style={styles.quickStatLabel}>Paid</Text>
-                        </View>
-                        <View style={[styles.quickStatCard, { borderColor: '#EF5350' }]}>
-                            <Text style={[styles.quickStatValue, { color: '#EF5350' }]}>{unpaidCount}</Text>
-                            <Text style={styles.quickStatLabel}>Unpaid</Text>
-                        </View>
-                    </View>
+
                 </ScrollView>
             ) : (
                 <View style={{ flex: 1 }}>

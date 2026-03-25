@@ -54,7 +54,7 @@ export default function AdminLoginScreen() {
                 {/* Logo Header */}
                 <Animated.View entering={FadeIn.duration(800)} style={styles.headerContainer}>
                     <Image
-                        source={require('../../assets/logo.png')}
+                        source={require('../../assets/logo_brand.png')}
                         style={styles.logo}
                         contentFit="contain"
                         cachePolicy="memory-disk"

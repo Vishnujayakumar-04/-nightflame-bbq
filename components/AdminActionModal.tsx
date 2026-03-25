@@ -1,10 +1,23 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Order } from '../types/models';
 
 import { OrderStatus, PaymentStatus } from '../constants/enums';
+
+const formatOrderNumber = (order: Order) => {
+    if (order.orderNumber) return order.orderNumber;
+    return `#${order.orderId.substring(0, 5).toUpperCase()}`;
+};
+
+const formatPickupTime = (ts?: number) => {
+    if (!ts) return 'N/A';
+    const d = new Date(ts);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    return `${h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+};
 
 interface AdminActionModalProps {
     visible: boolean;
@@ -148,7 +161,7 @@ export function AdminActionModal({
 
                     <View style={styles.header}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            <Text style={styles.title}>Order #{order.orderId.substring(0, 5).toUpperCase()}</Text>
+                            <Text style={styles.title}>{formatOrderNumber(order)}</Text>
                             {isWalkIn && (
                                 <View style={styles.walkInTag}>
                                     <Text style={styles.walkInTagText}>Walk-in</Text>
@@ -160,11 +173,51 @@ export function AdminActionModal({
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.detailsBox}>
-                        <Text style={styles.detailsText}>Customer: <Text style={styles.boldText}>{order.customerName || 'Walk-in'}</Text></Text>
-                        <Text style={styles.detailsText}>Amount: <Text style={styles.amountText}>₹{order.totalAmount.toFixed(0)}</Text></Text>
-                        <Text style={styles.detailsText}>Payment: <Text style={[styles.boldText, order.paymentStatus === PaymentStatus.PAID ? { color: '#4CAF50' } : { color: '#FF9800' }]}>{order.paymentStatus}</Text></Text>
-                    </View>
+                    <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+                        {/* Customer Info Card */}
+                        <View style={styles.detailsBox}>
+                            <View style={styles.detailRow}>
+                                <Ionicons name="person-outline" size={16} color="#757575" />
+                                <Text style={styles.detailsText}>Customer: <Text style={styles.boldText}>{order.customerName || 'Walk-in'}</Text></Text>
+                            </View>
+                            {order.phoneNumber && (
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="call-outline" size={16} color="#757575" />
+                                    <Text style={styles.detailsText}>Phone: <Text style={styles.boldText}>{order.phoneNumber}</Text></Text>
+                                </View>
+                            )}
+                            <View style={styles.detailRow}>
+                                <Ionicons name="time-outline" size={16} color="#757575" />
+                                <Text style={styles.detailsText}>Pickup: <Text style={styles.boldText}>{formatPickupTime(order.pickupTime)}</Text></Text>
+                            </View>
+                            <View style={styles.detailDivider} />
+                            <View style={styles.detailRow}>
+                                <Ionicons name="cash-outline" size={16} color="#757575" />
+                                <Text style={styles.detailsText}>Amount: <Text style={styles.amountText}>₹{order.totalAmount.toFixed(0)}</Text></Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Ionicons name="card-outline" size={16} color="#757575" />
+                                <Text style={styles.detailsText}>Payment: <Text style={[styles.boldText, order.paymentStatus === PaymentStatus.PAID ? { color: '#4CAF50' } : { color: '#FF9800' }]}>{order.paymentStatus === PaymentStatus.PAID ? 'Paid' : order.paymentStatus === PaymentStatus.PAYMENT_INITIATED ? 'UPI Initiated' : 'Unpaid'}</Text></Text>
+                            </View>
+                        </View>
+
+                        {/* Items List */}
+                        <View style={styles.itemsBox}>
+                            <Text style={styles.itemsTitle}>Order Items</Text>
+                            {order.items.map((cartItem, idx) => {
+                                const addonStr = cartItem.selectedAddOns?.map(a => `+${a.quantity}x ${a.name}`).join(', ');
+                                return (
+                                    <View key={idx} style={styles.itemRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.itemName}>{cartItem.menuItem.name} × {cartItem.quantity}</Text>
+                                            {addonStr ? <Text style={styles.itemAddon}>{addonStr}</Text> : null}
+                                        </View>
+                                        <Text style={styles.itemPrice}>₹{(cartItem.menuItem.price * cartItem.quantity).toFixed(0)}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </ScrollView>
 
                     <Text style={styles.actionLabel}>Next Step</Text>
                     <View style={styles.buttonContainer}>
@@ -266,5 +319,20 @@ const styles = StyleSheet.create({
         fontFamily: 'Inter_400Regular',
         textAlign: 'center',
         paddingVertical: 12,
-    }
+    },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    detailDivider: { height: 1, backgroundColor: '#353030', marginVertical: 12 },
+    itemsBox: {
+        backgroundColor: '#252121',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#353030',
+    },
+    itemsTitle: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', marginBottom: 12 },
+    itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+    itemName: { color: '#E0E0E0', fontSize: 14, fontFamily: 'Inter_500Medium' },
+    itemAddon: { color: '#A5A2A2', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+    itemPrice: { color: '#FFFFFF', fontSize: 14, fontFamily: 'Inter_600SemiBold' }
 });

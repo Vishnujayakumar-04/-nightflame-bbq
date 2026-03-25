@@ -15,10 +15,8 @@ export default function NotificationPermissionScreen() {
         try {
             if (Constants.appOwnership !== 'expo') {
                 // Production build: actual push notifications can be handled here
-                console.log('Would request push permissions in prod build');
-            } else {
-                console.log('Push notifications are not supported in Expo Go. Requesting handled silently.');
             }
+
             // Simulate network delay
             await new Promise(r => setTimeout(r, 800));
         } catch {

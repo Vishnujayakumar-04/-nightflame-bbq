@@ -77,7 +77,7 @@ export default function WelcomeScreen() {
                 <View style={styles.content}>
                     <Animated.View entering={FadeIn.duration(1200)} style={styles.logoContainer}>
                         <Image
-                            source={require('../../assets/logo.png')}
+                            source={require('../../assets/logo_brand.png')}
                             style={styles.logo}
                             contentFit="contain"
                             cachePolicy="memory-disk"

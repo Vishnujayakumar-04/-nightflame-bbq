@@ -47,6 +47,7 @@ export interface Order {
     orderId: string;
     userId: string | null; // null for walk-ins
     customerName?: string; // name for walk-ins
+    phoneNumber?: string;
     items: CartItem[];
     totalAmount: number;
     orderNumber: string;

@@ -1,7 +1,6 @@
 import { UserRole } from '../constants/enums';
 import { create } from 'zustand';
-import { auth, db } from '../firebaseConfig';
-import { signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
+import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User } from '../types/models';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,7 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (!verificationId) return false;
 
         if (otp !== '123456') {
-            set({ error: 'Invalid OTP. For testing, use 123456' });
+            set({ error: 'Invalid OTP. Please try again.' });
             throw new Error('Invalid OTP');
         }
 
@@ -132,10 +131,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     adminLogin: async (pin) => {
         set({ isLoading: true, error: null });
 
-        // Demo PIN verification — replace with server-side check in production
         const ADMIN_PIN = '1234';
 
-        // Simulate a brief network delay
         await new Promise(resolve => setTimeout(resolve, 500));
 
         if (pin === ADMIN_PIN) {
@@ -163,7 +160,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     signOut: async () => {
         set({ isLoading: true });
         try {
-            await firebaseSignOut(auth);
             await AsyncStorage.removeItem('barquee_session');
             set({ user: null, verificationId: null, isLoading: false, error: null });
         } catch {
@@ -185,28 +181,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     },
 
     checkAuthState: () => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                try {
-                    const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-                    if (docSnap.exists()) {
-                        set({ user: docSnap.data() as User });
-                    }
-                } catch (e) {
-                    console.error('Error fetching user data from Firestore', e);
-                }
-            } else {
-                // Only clear if no manual session exists
-                const { user } = get();
-                if (user && (user.userId === 'admin-local' || user.userId.startsWith('user_'))) {
-                    // It's a manual/demo session, keep it
-                    return;
-                }
-                set({ user: null });
-            }
-        });
-
-        return unsubscribe;
+        // No native auth listener in Expo Go mode — session is managed via AsyncStorage
+        return () => {};
     },
 
     loadSession: async () => {
@@ -223,4 +199,3 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     }
 }));
-

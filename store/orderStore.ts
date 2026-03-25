@@ -59,7 +59,6 @@ export const useOrderStore = create<OrderState>((set) => ({
                 // Client-side sort by timestamp descending (newest first)
                 fetchedOrders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-                console.log(`[OrderStore] Loaded ${fetchedOrders.length} orders for ${user.role}`);
                 set({ orders: fetchedOrders, isLoading: false, error: null });
             },
             (error) => {
@@ -116,7 +115,7 @@ export const useOrderStore = create<OrderState>((set) => ({
                     orderId: orderRef.id,
                     orderNumber,
                     runningNumber,
-                    status: OrderStatus.PENDING,
+                    status: orderData.userId === 'walk-in' ? OrderStatus.ACCEPTED : OrderStatus.PENDING,
                     estimatedPickupTime,
                     timestamp: Date.now(),
                     notificationShown: false,
@@ -124,10 +123,8 @@ export const useOrderStore = create<OrderState>((set) => ({
                     lockedBy: null
                 };
 
-                // Firestore rejects `undefined` values — strip them to prevent write failures
-                const cleanOrder = Object.fromEntries(
-                    Object.entries(newOrder).filter(([_, v]) => v !== undefined)
-                );
+                // Deep strip all nested undefined values (Firestore strict mode)
+                const cleanOrder = JSON.parse(JSON.stringify(newOrder));
 
                 transaction.set(orderRef, cleanOrder);
                 return { orderId: orderRef.id, orderNumber };
@@ -189,6 +186,9 @@ export const useOrderStore = create<OrderState>((set) => ({
 
     confirmPayment: async (orderId, paymentMethod, transactionId) => {
         try {
+            const state = useOrderStore.getState();
+            const order = state.orders.find(o => o.orderId === orderId);
+
             const updates: Partial<Order> = {
                 paymentStatus: PaymentStatus.PAID,
                 paymentMethod,
@@ -196,6 +196,12 @@ export const useOrderStore = create<OrderState>((set) => ({
                 isLocked: false,
                 lockedBy: null
             };
+
+            // Auto-complete Walk-in orders as soon as payment is collected
+            if (order && order.userId === 'walk-in') {
+                updates.status = OrderStatus.COMPLETED;
+            }
+
             if (transactionId && transactionId.trim() !== '') {
                 updates.transactionId = transactionId;
             }

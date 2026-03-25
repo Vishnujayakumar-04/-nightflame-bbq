@@ -117,6 +117,7 @@ export default function CustomerTabsLayout() {
         <>
             <Tabs
                 screenOptions={{
+                    sceneStyle: { backgroundColor: '#1A1818' },
                     headerShown: false,
                     tabBarShowLabel: true,
                     tabBarLabelStyle: {

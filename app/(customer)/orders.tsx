@@ -9,16 +9,10 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Order } from '../../types/models';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useOrderStore } from '../../store/orderStore';
-import { OrderStatus, PaymentStatus } from '../../constants/enums';
+import { OrderStatus, PaymentStatus, PaymentMethod } from '../../constants/enums';
+import { formatCurrency, formatOrderIdShort, getRelativeTime, formatTime, formatDate } from '../../utils/formatters';
 
-const formatCurrency = (amount: number) => `₹${amount.toFixed(0)}`;
-const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-};
-const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-const formatOrderIdShort = (id: string) => `#${id.substring(0, 8).toUpperCase()}`;
+
 
 export default function MyOrdersScreen() {
     const router = useRouter();
@@ -74,7 +68,14 @@ export default function MyOrdersScreen() {
                     activeOpacity={0.85}
                 >
                     <View style={styles.orderHeader}>
-                        <Text style={styles.orderId}>{item.orderNumber || formatOrderIdShort(item.orderId)}</Text>
+                        <View style={styles.orderIdContainer}>
+                            <Text style={styles.orderId}>{formatOrderIdShort(item)}</Text>
+                            {item.paymentMethod === PaymentMethod.UPI && (
+                                <View style={styles.upiIconContainer}>
+                                    <Ionicons name="flash" size={12} color="#4CAF50" />
+                                </View>
+                            )}
+                        </View>
                         <StatusBadge status={item.status} />
                     </View>
 
@@ -82,9 +83,14 @@ export default function MyOrdersScreen() {
 
                     <View style={styles.orderFooter}>
                         <View style={styles.orderMeta}>
-                            <Ionicons name="time-outline" size={14} color="#757575" />
-                            <Text style={styles.orderMetaText}>{formatTime(item.pickupTime)}</Text>
-                            <Text style={styles.orderMetaText}>{formatDate(item.timestamp)}</Text>
+                            <View style={styles.metaItem}>
+                                <Ionicons name="time-outline" size={14} color="#757575" />
+                                <Text style={styles.metaText}>{formatTime(item.timestamp)}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Ionicons name="calendar-outline" size={14} color="#757575" />
+                                <Text style={styles.metaText}>{formatDate(item.timestamp)}</Text>
+                            </View>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
                             <Text style={styles.orderTotal}>{formatCurrency(item.totalAmount)}</Text>
@@ -259,12 +265,27 @@ const styles = StyleSheet.create({
     orderMeta: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 12,
     },
-    orderMetaText: {
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    metaText: {
         color: '#A5A2A2',
         fontSize: 12,
         fontFamily: 'Inter_400Regular',
+    },
+    orderIdContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    upiIconContainer: {
+        backgroundColor: 'rgba(76, 175, 80, 0.15)',
+        padding: 4,
+        borderRadius: 6,
     },
     orderTotal: {
         color: '#FF6A00',

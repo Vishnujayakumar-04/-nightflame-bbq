@@ -1,7 +1,7 @@
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Dimensions, Modal, Pressable, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,8 +105,8 @@ export default function MenuScreen() {
 
 
 
-    const renderMenuItem = ({ item, index }: { item: MenuItem, index: number }) => (
-        <Animated.View entering={FadeInDown.delay(index * 50).duration(400)} style={styles.menuCardContainer}>
+    const renderMenuItem = useCallback(({ item }: { item: MenuItem }) => (
+        <Animated.View style={styles.menuCardContainer}>
             <TouchableOpacity
                 activeOpacity={shopStatus?.isOpen ? 0.85 : 1}
                 onPress={() => shopStatus?.isOpen && setSelectedItem(item)}
@@ -120,7 +120,7 @@ export default function MenuScreen() {
                 {(() => {
                     const localImg = getMenuItemImage(item.name);
                     if (item.imageUrl) {
-                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.menuImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
+                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo_brand.png')} style={styles.menuImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
                     } else if (localImg) {
                         return <Image source={localImg} style={styles.menuImageTop} contentFit="cover" />;
                     } else {
@@ -172,7 +172,7 @@ export default function MenuScreen() {
                 </View>
             </TouchableOpacity>
         </Animated.View>
-    );
+    ), [shopStatus?.isOpen]);
 
     const nutrition = selectedItem ? getNutritionInfo(selectedItem) : null;
 
@@ -236,9 +236,13 @@ export default function MenuScreen() {
                         keyExtractor={(item) => item.itemId}
                         numColumns={2}
                         renderItem={renderMenuItem}
-                        contentContainerStyle={{ padding: 16, paddingTop: 30, paddingBottom: 120, gap: 16 }}
+                        contentContainerStyle={{ padding: 16, paddingTop: 30, paddingBottom: 80, gap: 16 }}
                         columnWrapperStyle={{ gap: 16, justifyContent: 'space-between' }}
                         showsVerticalScrollIndicator={false}
+                        initialNumToRender={8}
+                        maxToRenderPerBatch={6}
+                        windowSize={5}
+                        removeClippedSubviews={true}
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
                                 <Ionicons name="restaurant-outline" size={48} color="#555" />
@@ -300,7 +304,7 @@ export default function MenuScreen() {
                                             {(() => {
                                                 const localImg = getMenuItemImage(selectedItem.name);
                                                 if (selectedItem.imageUrl) {
-                                                    return <Image source={{ uri: selectedItem.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.detailImagePremium} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
+                                                    return <Image source={{ uri: selectedItem.imageUrl }} placeholder={require('../../assets/logo_brand.png')} style={styles.detailImagePremium} contentFit="cover" transition={300} cachePolicy="memory-disk" />;
                                                 } else if (localImg) {
                                                     return <Image source={localImg} style={styles.detailImagePremium} contentFit="cover" />;
                                                 } else {
@@ -543,7 +547,7 @@ const styles = StyleSheet.create({
     },
     menuCardContainer: {
         width: CARD_WIDTH,
-        marginBottom: 40,
+        marginBottom: 10,
         marginTop: 40,
     },
     menuCardOuter: {

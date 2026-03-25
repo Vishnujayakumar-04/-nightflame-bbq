@@ -39,7 +39,7 @@ const PopularItemCard = ({ item, status, router }: { item: MenuItem; status: any
                 {(() => {
                     const localImg = getMenuItemImage(item.name);
                     if (item.imageUrl) {
-                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.popularImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />
+                        return <Image source={{ uri: item.imageUrl }} placeholder={require('../../assets/logo_brand.png')} style={styles.popularImageTop} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                     } else if (localImg) {
                         return <Image source={localImg} style={styles.popularImageTop} contentFit="cover" />;
                     } else {
@@ -182,7 +182,7 @@ export default function HomeScreen() {
                             onPress={() => router.push('/(customer)/shop-details')}
                         >
                             <Image
-                                source={require('../../assets/logo.png')}
+                                source={require('../../assets/logo_brand.png')}
                                 style={styles.shopBtnImage}
                                 contentFit="cover"
                             />
@@ -239,7 +239,7 @@ export default function HomeScreen() {
                                 {(() => {
                                     const localImg = getMenuItemImage(specialItem.name);
                                     if (specialItem.imageUrl) {
-                                        return <Image source={{ uri: specialItem.imageUrl }} placeholder={require('../../assets/logo.png')} style={styles.specialImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
+                                        return <Image source={{ uri: specialItem.imageUrl }} placeholder={require('../../assets/logo_brand.png')} style={styles.specialImage} contentFit="cover" transition={300} cachePolicy="memory-disk" />
                                     } else if (localImg) {
                                         return <Image source={localImg} style={styles.specialImage} contentFit="cover" />;
                                     } else {
